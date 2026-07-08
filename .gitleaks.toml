@@ -12,4 +12,5 @@
   regexes = [
     '''YOUR_KEY_HERE''',
     '''EXAMPLE_TOKEN''',
+    '''TMDB_V3_API_KEY''',
   ]
