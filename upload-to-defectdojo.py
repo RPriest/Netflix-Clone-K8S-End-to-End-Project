@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+import requests, os, sys
+from datetime import date
+
+DOJO_URL   = os.environ.get('DOJO_URL', 'http://13.220.219.216:8080')
+DOJO_TOKEN = os.environ['DOJO_TOKEN']
+ENGAGEMENT = os.environ.get('ENGAGEMENT_ID', '1')
+
+headers = {'Authorization': f'Token {DOJO_TOKEN}'}
+
+def upload(scan_type, file_path):
+    if not os.path.exists(file_path):
+        print(f'  SKIP {file_path} - not found')
+        return
+    print(f'  Uploading {scan_type}: {file_path}')
+    with open(file_path, 'rb') as f:
+        r = requests.post(
+            f'{DOJO_URL}/api/v2/import-scan/',
+            headers=headers,
+            data={
+                'scan_type': scan_type,
+                'engagement': ENGAGEMENT,
+                'scan_date': str(date.today()),
+                'active': True,
+                'verified': False,
+            },
+            files={'file': f}
+        )
+    status = 'OK' if r.status_code == 201 else f'FAIL ({r.status_code})'
+    print(f'    {status}')
+
+print('Uploading scan results to DefectDojo...')
+upload('Gitleaks Scan',             'gitleaks-report.json')
+upload('SonarQube Scan',            'sonar-report.json')
+upload('Semgrep JSON Report',       'semgrep-report.json')
+upload('Trivy Scan',                'trivy-fs-report.json')
+upload('Trivy Scan',                'trivy-image-report.json')
+upload('OWASP Dependency Check',    'dependency-check-report/dependency-check-report.json')
+upload('ZAP Scan',                  'zap-baseline-report.json')
+upload('CycloneDX Scan',            'sbom.cyclonedx.json')
+print(f'Done. View at: {DOJO_URL}/engagement/{ENGAGEMENT}/')
