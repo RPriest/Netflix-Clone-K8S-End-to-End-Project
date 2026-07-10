@@ -32,6 +32,8 @@ def upload(scan_type, file_path):
         )
     status = 'OK' if r.status_code == 201 else f'FAIL ({r.status_code})'
     print(f'    {status}')
+    if r.status_code != 201:
+        print(f'    {r.text[:500]}')
 
 print('Uploading scan results to DefectDojo...')
 upload('Gitleaks Scan',             'gitleaks-report.json')
@@ -39,7 +41,7 @@ upload('SonarQube API Import',      'sonar-report.json')
 upload('Semgrep JSON Report',       'semgrep-report.json')
 upload('Trivy Scan',                os.path.join(APP_DIR, 'trivy-fs-report.json'))
 upload('Trivy Scan',                'trivy-image-report.json')
-upload('OWASP Dependency Check',    os.path.join(APP_DIR, 'dependency-check-report', 'dependency-check-report.json'))
-upload('ZAP Scan',                  'zap-baseline-report.json')
+upload('Dependency Check Scan',     os.path.join(APP_DIR, 'dependency-check-report', 'dependency-check-report.json'))
+upload('ZAP Scan',                  'zap-baseline-report.xml')
 upload('CycloneDX Scan',            os.path.join(APP_DIR, 'sbom.cyclonedx.json'))
 print(f'Done. View at: {DOJO_URL}/engagement/{ENGAGEMENT}/')
