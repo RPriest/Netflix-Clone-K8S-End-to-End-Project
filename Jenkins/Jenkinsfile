@@ -48,23 +48,25 @@ pipeline {
             post { always { archiveArtifacts artifacts: 'gitleaks-report.json', allowEmptyArchive: true } }
         }
 
-        stage('SonarQube Analysis') {
+       stage('SonarQube Analysis') {
     steps {
         withSonarQubeEnv('sonar-server') {
             sh '''
                 set +x
-                SONAR_TOKEN=$(aws secretsmanager get-secret-value \
+                unset SONAR_TOKEN
+
+                MY_SONAR_TOKEN=$(aws secretsmanager get-secret-value \
                     --secret-id "netflix-clone/prod/cicd-secrets" \
                     --query SecretString --output text | jq -r .SONAR_TOKEN)
 
-                echo "DEBUG: token length is ${#SONAR_TOKEN}"
+                echo "DEBUG: token length is ${#MY_SONAR_TOKEN}"
 
                 $SCANNER_HOME/bin/sonar-scanner \
                   -X \
                   -Dsonar.projectName=Netflix-Clone \
                   -Dsonar.projectKey=Netflix-Clone \
                   -Dsonar.sources=Application-Code/src \
-                  -Dsonar.token=$SONAR_TOKEN
+                  -Dsonar.token=$MY_SONAR_TOKEN
             '''
         }
     }
