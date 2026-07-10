@@ -54,10 +54,14 @@ pipeline {
                     sh '''
                         set +x
                         SONAR_TOKEN=$(aws secretsmanager get-secret-value \
-                            --secret-id "netflix-clone/prod/cicd-secrets" \
-                            --query SecretString --output text | jq -r .SONAR_TOKEN)
+                        --secret-id "netflix-clone/prod/cicd-secrets" \
+                        --query SecretString --output text | jq -r .SONAR_TOKEN)
+
+                        echo "DEBUG: token length is ${#SONAR_TOKEN}"
+                        echo "DEBUG: token prefix is ${SONAR_TOKEN:0:6}"
 
                         $SCANNER_HOME/bin/sonar-scanner \
+                            -X \
                           -Dsonar.projectName=Netflix-Clone \
                           -Dsonar.projectKey=Netflix-Clone \
                           -Dsonar.sources=Application-Code/src \
@@ -278,19 +282,11 @@ EOS
             script {
                 sendSlack(":white_check_mark: *SUCCESS* ${env.JOB_NAME} #${env.BUILD_NUMBER} | Image: ${env.ECR_REGISTRY}/${env.ECR_REPO}:${env.BUILD_NUMBER} | ${env.BUILD_URL}")
             }
-            emailext(attachLog: true,
-                subject: "[Jenkins] SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                body: "Build passed. View at: ${env.BUILD_URL}",
-                to: 'your-email@gmail.com', mimeType: 'text/html')
         }
         failure {
             script {
                 sendSlack(":x: *FAILED* ${env.JOB_NAME} #${env.BUILD_NUMBER} | Stage: ${env.STAGE_NAME} | ${env.BUILD_URL}console")
             }
-            emailext(attachLog: true,
-                subject: "[Jenkins] FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                body: "Build FAILED at stage: ${env.STAGE_NAME}. Check DefectDojo for findings.",
-                to: 'kloudtech91@gmail.com', mimeType: 'text/html')
         }
     }
 }
