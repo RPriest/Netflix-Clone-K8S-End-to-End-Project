@@ -188,9 +188,9 @@ stage('SonarQube Quality Gate') {
             ''',
             odcInstallation: 'owasp-dp-check'
 
-            dependencyCheckPublisher pattern: 'Application-Code/dependency-check-report/dependency-check-report.xml'
+            dependencyCheckPublisher pattern: 'dependency-check-report/dependency-check-report.xml'
 
-            archiveArtifacts artifacts: 'Application-Code/dependency-check-report/**/*', fingerprint: true
+            archiveArtifacts artifacts: 'dependency-check-report/**/*', fingerprint: true
         }
     }
 }
