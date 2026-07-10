@@ -48,115 +48,115 @@ pipeline {
             post { always { archiveArtifacts artifacts: 'gitleaks-report.json', allowEmptyArchive: true } }
         }
 
-       stage('SonarQube Analysis') {
-    steps {
-        sh '''
-            set +x
+        stage('SonarQube Analysis') {
+            steps {
+                sh '''
+                    set +x
 
-            SONAR_HOST_URL="http://localhost:9000"
+                    SONAR_HOST_URL="http://localhost:9000"
 
-            SONAR_TOKEN=$(aws secretsmanager get-secret-value \
-                --secret-id "netflix-clone/prod/cicd-secrets" \
-                --query SecretString \
-                --output text | jq -r .SONAR_TOKEN)
+                    SONAR_TOKEN=$(aws secretsmanager get-secret-value \
+                        --secret-id "netflix-clone/prod/cicd-secrets" \
+                        --query SecretString \
+                        --output text | jq -r .SONAR_TOKEN)
 
-            echo "Starting SonarQube analysis..."
+                    echo "Starting SonarQube analysis..."
 
-            $SCANNER_HOME/bin/sonar-scanner \
-                -Dsonar.host.url=$SONAR_HOST_URL \
-                -Dsonar.projectName=Netflix-Clone \
-                -Dsonar.projectKey=Netflix-Clone \
-                -Dsonar.sources=Application-Code/src \
-                -Dsonar.login=$SONAR_TOKEN
+                    $SCANNER_HOME/bin/sonar-scanner \
+                        -Dsonar.host.url=$SONAR_HOST_URL \
+                        -Dsonar.projectName=Netflix-Clone \
+                        -Dsonar.projectKey=Netflix-Clone \
+                        -Dsonar.sources=Application-Code/src \
+                        -Dsonar.login=$SONAR_TOKEN
 
-            echo "SonarQube analysis submitted."
-        '''
-    }
-}
+                    echo "SonarQube analysis submitted."
+                '''
+            }
+        }
 
-stage('SonarQube Quality Gate') {
-    steps {
-        sh '''
-            set +x
+        stage('SonarQube Quality Gate') {
+            steps {
+                sh '''
+                    set +x
 
-            SONAR_HOST_URL="http://localhost:9000"
+                    SONAR_HOST_URL="http://localhost:9000"
 
-            SONAR_TOKEN=$(aws secretsmanager get-secret-value \
-                --secret-id "netflix-clone/prod/cicd-secrets" \
-                --query SecretString \
-                --output text | jq -r .SONAR_TOKEN)
+                    SONAR_TOKEN=$(aws secretsmanager get-secret-value \
+                        --secret-id "netflix-clone/prod/cicd-secrets" \
+                        --query SecretString \
+                        --output text | jq -r .SONAR_TOKEN)
 
-            REPORT_FILE=".scannerwork/report-task.txt"
+                    REPORT_FILE=".scannerwork/report-task.txt"
 
-            if [ ! -f "$REPORT_FILE" ]; then
-                echo "ERROR: report-task.txt not found."
-                exit 1
-            fi
-
-            CE_TASK_URL=$(grep '^ceTaskUrl=' "$REPORT_FILE" | cut -d= -f2-)
-
-            if [ -z "$CE_TASK_URL" ]; then
-                echo "ERROR: Unable to determine SonarQube task URL."
-                exit 1
-            fi
-
-            echo "Waiting for SonarQube analysis to complete..."
-
-            while true
-            do
-                RESPONSE=$(curl -s -u "$SONAR_TOKEN:" "$CE_TASK_URL")
-
-                STATUS=$(echo "$RESPONSE" | jq -r '.task.status')
-
-                echo "Current status: $STATUS"
-
-                case "$STATUS" in
-                    SUCCESS)
-                        ANALYSIS_ID=$(echo "$RESPONSE" | jq -r '.task.analysisId')
-                        break
-                        ;;
-                    FAILED|CANCELED)
-                        echo "SonarQube Compute Engine task failed."
+                    if [ ! -f "$REPORT_FILE" ]; then
+                        echo "ERROR: report-task.txt not found."
                         exit 1
-                        ;;
-                    PENDING|IN_PROGRESS)
-                        sleep 5
-                        ;;
-                    *)
-                        echo "Unexpected status: $STATUS"
-                        echo "$RESPONSE"
+                    fi
+
+                    CE_TASK_URL=$(grep '^ceTaskUrl=' "$REPORT_FILE" | cut -d= -f2-)
+
+                    if [ -z "$CE_TASK_URL" ]; then
+                        echo "ERROR: Unable to determine SonarQube task URL."
                         exit 1
-                        ;;
-                esac
-            done
+                    fi
 
-            QUALITY_GATE=$(curl -s -u "$SONAR_TOKEN:" \
-                "$SONAR_HOST_URL/api/qualitygates/project_status?analysisId=$ANALYSIS_ID" \
-                | jq -r '.projectStatus.status')
+                    echo "Waiting for SonarQube analysis to complete..."
 
-            echo "Quality Gate Result: $QUALITY_GATE"
+                    while true
+                    do
+                        RESPONSE=$(curl -s -u "$SONAR_TOKEN:" "$CE_TASK_URL")
 
-            if [ "$QUALITY_GATE" != "OK" ]; then
-                echo "Quality Gate FAILED."
+                        STATUS=$(echo "$RESPONSE" | jq -r '.task.status')
 
-                curl -s -u "$SONAR_TOKEN:" \
-                    "$SONAR_HOST_URL/api/qualitygates/project_status?analysisId=$ANALYSIS_ID" | jq
+                        echo "Current status: $STATUS"
 
-                exit 1
-            fi
+                        case "$STATUS" in
+                            SUCCESS)
+                                ANALYSIS_ID=$(echo "$RESPONSE" | jq -r '.task.analysisId')
+                                break
+                                ;;
+                            FAILED|CANCELED)
+                                echo "SonarQube Compute Engine task failed."
+                                exit 1
+                                ;;
+                            PENDING|IN_PROGRESS)
+                                sleep 5
+                                ;;
+                            *)
+                                echo "Unexpected status: $STATUS"
+                                echo "$RESPONSE"
+                                exit 1
+                                ;;
+                        esac
+                    done
 
-            echo "Quality Gate PASSED."
-        '''
-    }
-}
+                    QUALITY_GATE=$(curl -s -u "$SONAR_TOKEN:" \
+                        "$SONAR_HOST_URL/api/qualitygates/project_status?analysisId=$ANALYSIS_ID" \
+                        | jq -r '.projectStatus.status')
+
+                    echo "Quality Gate Result: $QUALITY_GATE"
+
+                    if [ "$QUALITY_GATE" != "OK" ]; then
+                        echo "Quality Gate FAILED."
+
+                        curl -s -u "$SONAR_TOKEN:" \
+                            "$SONAR_HOST_URL/api/qualitygates/project_status?analysisId=$ANALYSIS_ID" | jq
+
+                        exit 1
+                    fi
+
+                    echo "Quality Gate PASSED."
+                '''
+            }
+        }
 
         stage('Install Dependencies') {
-    steps {
-        dir("${APP_DIR}") {
-            sh 'yarn install --frozen-lockfile'
+            steps {
+                dir("${APP_DIR}") {
+                    sh 'yarn install --frozen-lockfile'
+                }
+            }
         }
-    }
-}
 
         stage('NJSScan SAST') {
             steps {
@@ -175,25 +175,25 @@ stage('SonarQube Quality Gate') {
         }
 
         stage('OWASP Dependency Check') {
-    steps {
-        dir('Application-Code') {
-            sh '''
-                mkdir -p dependency-check-report
-            '''
+            steps {
+                dir('Application-Code') {
+                    sh '''
+                        mkdir -p dependency-check-report
+                    '''
 
-            dependencyCheck additionalArguments: '''
-                --scan .
-                --format ALL
-                --out dependency-check-report
-            ''',
-            odcInstallation: 'owasp-dp-check'
+                    dependencyCheck additionalArguments: '''
+                        --scan .
+                        --format ALL
+                        --out dependency-check-report
+                    ''',
+                    odcInstallation: 'owasp-dp-check'
 
-            dependencyCheckPublisher pattern: 'dependency-check-report/dependency-check-report.xml'
+                    dependencyCheckPublisher pattern: 'dependency-check-report/dependency-check-report.xml'
 
-            archiveArtifacts artifacts: 'dependency-check-report/**/*', fingerprint: true
+                    archiveArtifacts artifacts: 'dependency-check-report/**/*', fingerprint: true
+                }
+            }
         }
-    }
-}
 
         stage('RetireJS') {
             steps {
@@ -218,18 +218,18 @@ stage('SonarQube Quality Gate') {
         }
 
         stage('Kaniko Build & Push') {
-    steps {
-        sh '''
-            set +x
-            TMDB_API_KEY=$(aws secretsmanager get-secret-value \
-                --secret-id "netflix-clone/prod/cicd-secrets" \
-                --query SecretString --output text | jq -r .TMDB_API_KEY)
+            steps {
+                sh '''
+                    set +x
+                    TMDB_API_KEY=$(aws secretsmanager get-secret-value \
+                        --secret-id "netflix-clone/prod/cicd-secrets" \
+                        --query SecretString --output text | jq -r .TMDB_API_KEY)
 
-            ECR_PASSWORD=$(aws ecr get-login-password --region ${AWS_REGION})
-            AUTH=$(printf "AWS:%s" "$ECR_PASSWORD" | base64 -w0)
+                    ECR_PASSWORD=$(aws ecr get-login-password --region ${AWS_REGION})
+                    AUTH=$(printf "AWS:%s" "$ECR_PASSWORD" | base64 -w0)
 
-            mkdir -p kaniko-docker-config
-            cat > kaniko-docker-config/config.json <<EOF
+                    mkdir -p kaniko-docker-config
+                    cat > kaniko-docker-config/config.json <<EOF
 {
   "auths": {
     "${ECR_REGISTRY}": {
@@ -239,25 +239,37 @@ stage('SonarQube Quality Gate') {
 }
 EOF
 
-            docker run --rm \
-              -v "$WORKSPACE/Application-Code":/workspace \
-              -v "$WORKSPACE/kaniko-docker-config/config.json":/kaniko/.docker/config.json:ro \
-              gcr.io/kaniko-project/executor:latest \
-              --context /workspace \
-              --dockerfile /workspace/Dockerfile \
-              --build-arg TMDB_V3_API_KEY=$TMDB_API_KEY \
-              --destination ${ECR_REGISTRY}/${ECR_REPO}:${BUILD_NUMBER} \
-              --destination ${ECR_REGISTRY}/${ECR_REPO}:latest \
-              --digest-file=/tmp/image-digest.txt
+                    # Shared directory so the digest file survives after the
+                    # ephemeral --rm Kaniko container exits. Writing it to
+                    # the container's own /tmp (as before) loses the file
+                    # the moment the container is removed.
+                    mkdir -p kaniko-digest
 
-            rm -rf kaniko-docker-config
-            echo "Kaniko build and push complete"
-        '''
-        script {
-            env.IMAGE_DIGEST = readFile('/tmp/image-digest.txt').trim()
+                    docker run --rm \
+                      -v "$WORKSPACE/Application-Code":/workspace \
+                      -v "$WORKSPACE/kaniko-docker-config/config.json":/kaniko/.docker/config.json:ro \
+                      -v "$WORKSPACE/kaniko-digest":/kaniko-digest \
+                      gcr.io/kaniko-project/executor:latest \
+                      --context /workspace \
+                      --dockerfile /workspace/Dockerfile \
+                      --build-arg TMDB_V3_API_KEY=$TMDB_API_KEY \
+                      --destination ${ECR_REGISTRY}/${ECR_REPO}:${BUILD_NUMBER} \
+                      --destination ${ECR_REGISTRY}/${ECR_REPO}:latest \
+                      --digest-file=/kaniko-digest/image-digest.txt
+
+                    rm -rf kaniko-docker-config
+                    echo "Kaniko build and push complete"
+                '''
+                script {
+                    env.IMAGE_DIGEST = readFile("${WORKSPACE}/kaniko-digest/image-digest.txt").trim()
+                }
+            }
+            post {
+                always {
+                    sh 'rm -rf "$WORKSPACE/kaniko-digest" || true'
+                }
+            }
         }
-    }
-}
 
         stage('Trivy Image Scan') {
             steps {
@@ -271,20 +283,20 @@ EOF
         }
 
         stage('Cosign Sign Image') {
-    steps {
-        withCredentials([file(credentialsId: 'cosign-private-key', variable: 'COSIGN_KEY')]) {
-            sh '''
-                set +x
-                export COSIGN_PASSWORD=$(aws secretsmanager get-secret-value \
-                    --secret-id "netflix-clone/prod/cicd-secrets" \
-                    --query SecretString --output text | jq -r .COSIGN_PASSWORD)
+            steps {
+                withCredentials([file(credentialsId: 'cosign-private-key', variable: 'COSIGN_KEY')]) {
+                    sh '''
+                        set +x
+                        export COSIGN_PASSWORD=$(aws secretsmanager get-secret-value \
+                            --secret-id "netflix-clone/prod/cicd-secrets" \
+                            --query SecretString --output text | jq -r .COSIGN_PASSWORD)
 
-                ECR_PASSWORD=$(aws ecr get-login-password --region ${AWS_REGION})
-                AUTH=$(printf "AWS:%s" "$ECR_PASSWORD" | base64 -w0)
+                        ECR_PASSWORD=$(aws ecr get-login-password --region ${AWS_REGION})
+                        AUTH=$(printf "AWS:%s" "$ECR_PASSWORD" | base64 -w0)
 
-                export DOCKER_CONFIG="$WORKSPACE/cosign-docker-config"
-                mkdir -p "$DOCKER_CONFIG"
-                cat > "$DOCKER_CONFIG/config.json" <<EOF
+                        export DOCKER_CONFIG="$WORKSPACE/cosign-docker-config"
+                        mkdir -p "$DOCKER_CONFIG"
+                        cat > "$DOCKER_CONFIG/config.json" <<EOF
 {
   "auths": {
     "${ECR_REGISTRY}": {
@@ -294,14 +306,14 @@ EOF
 }
 EOF
 
-                cosign sign --key $COSIGN_KEY ${ECR_REPO}@${IMAGE_DIGEST}
+                        cosign sign --key $COSIGN_KEY ${ECR_REPO}@${IMAGE_DIGEST}
 
-                rm -rf "$DOCKER_CONFIG"
-                echo "Image signed with Cosign"
-            '''
+                        rm -rf "$DOCKER_CONFIG"
+                        echo "Image signed with Cosign"
+                    '''
+                }
+            }
         }
-    }
-}
 
         stage('Generate SBOM') {
             steps {
@@ -317,63 +329,63 @@ EOF
         }
 
         stage('Update Manifests Repo') {
-    steps {
-        sh '''
-            set +x
-            GITHUB_TOKEN=$(aws secretsmanager get-secret-value \
-                --secret-id "netflix-clone/prod/cicd-secrets" \
-                --query SecretString --output text | jq -r .GITHUB_TOKEN)
+            steps {
+                sh '''
+                    set +x
+                    GITHUB_TOKEN=$(aws secretsmanager get-secret-value \
+                        --secret-id "netflix-clone/prod/cicd-secrets" \
+                        --query SecretString --output text | jq -r .GITHUB_TOKEN)
 
-            ASKPASS_SCRIPT=$(mktemp)
-            trap 'rm -f "$ASKPASS_SCRIPT"' EXIT
-            cat > "$ASKPASS_SCRIPT" <<'EOS'
+                    ASKPASS_SCRIPT=$(mktemp)
+                    trap 'rm -f "$ASKPASS_SCRIPT"' EXIT
+                    cat > "$ASKPASS_SCRIPT" <<'EOS'
 #!/bin/sh
 echo "$GIT_ASKPASS_TOKEN"
 EOS
-            chmod 700 "$ASKPASS_SCRIPT"
-            export GIT_ASKPASS_TOKEN="$GITHUB_TOKEN"
-            export GIT_ASKPASS="$ASKPASS_SCRIPT"
+                    chmod 700 "$ASKPASS_SCRIPT"
+                    export GIT_ASKPASS_TOKEN="$GITHUB_TOKEN"
+                    export GIT_ASKPASS="$ASKPASS_SCRIPT"
 
-            git clone https://x-access-token@github.com/RPriest/netflix-manifests.git
-            cd netflix-manifests
-            git config user.email jenkins@devsecops.local
-            git config user.name "Jenkins CI"
+                    git clone https://x-access-token@github.com/RPriest/netflix-manifests.git
+                    cd netflix-manifests
+                    git config user.email jenkins@devsecops.local
+                    git config user.name "Jenkins CI"
 
-            sed -i "s|image: ${ECR_REGISTRY}/${ECR_REPO}:.*|image: ${ECR_REGISTRY}/${ECR_REPO}:${BUILD_NUMBER}|g" kubernetes/deployment.yml
+                    sed -i "s|image: ${ECR_REGISTRY}/${ECR_REPO}:.*|image: ${ECR_REGISTRY}/${ECR_REPO}:${BUILD_NUMBER}|g" kubernetes/deployment.yml
 
-            git add kubernetes/deployment.yml
+                    git add kubernetes/deployment.yml
 
-            if git diff --cached --quiet; then
-                echo "No changes to manifest — image tag already up to date, skipping commit."
-            else
-                git commit -m "ci: update image to build ${BUILD_NUMBER}"
-                git push origin main
-                echo "Manifests updated --- ArgoCD will sync"
-            fi
+                    if git diff --cached --quiet; then
+                        echo "No changes to manifest — image tag already up to date, skipping commit."
+                    else
+                        git commit -m "ci: update image to build ${BUILD_NUMBER}"
+                        git push origin main
+                        echo "Manifests updated --- ArgoCD will sync"
+                    fi
 
-            unset GIT_ASKPASS_TOKEN GIT_ASKPASS
-        '''
-    }
-}
+                    unset GIT_ASKPASS_TOKEN GIT_ASKPASS
+                '''
+            }
+        }
 
         stage('Wait for ArgoCD Sync') {
-    steps {
-        sh '''
-            set +x
-            ARGOCD_TOKEN=$(aws secretsmanager get-secret-value \
-                --secret-id "netflix-clone/prod/cicd-secrets" \
-                --query SecretString --output text | jq -r .ARGOCD_TOKEN)
+            steps {
+                sh '''
+                    set +x
+                    ARGOCD_TOKEN=$(aws secretsmanager get-secret-value \
+                        --secret-id "netflix-clone/prod/cicd-secrets" \
+                        --query SecretString --output text | jq -r .ARGOCD_TOKEN)
 
-            argocd app wait netflix-clone \
-              --sync --health \
-              --timeout 180 \
-              --auth-token "$ARGOCD_TOKEN" \
-              --server acdd8089cd45447938cd972873e0e8b2-639346841.us-east-1.elb.amazonaws.com \
-              --insecure \
-              --grpc-web
-        '''
-    }
-}
+                    argocd app wait netflix-clone \
+                      --sync --health \
+                      --timeout 180 \
+                      --auth-token "$ARGOCD_TOKEN" \
+                      --server acdd8089cd45447938cd972873e0e8b2-639346841.us-east-1.elb.amazonaws.com \
+                      --insecure \
+                      --grpc-web
+                '''
+            }
+        }
 
         stage('ZAP DAST Scan') {
             steps {
