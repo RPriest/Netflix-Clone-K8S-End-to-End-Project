@@ -151,12 +151,12 @@ stage('SonarQube Quality Gate') {
 }
 
         stage('Install Dependencies') {
-            steps {
-                dir("${APP_DIR}") {
-                    sh 'npm install'
-                }
-            }
+    steps {
+        dir("${APP_DIR}") {
+            sh 'yarn install --frozen-lockfile'
         }
+    }
+}
 
         stage('NJSScan SAST') {
             steps {
