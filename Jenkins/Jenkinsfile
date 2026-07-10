@@ -66,7 +66,8 @@ pipeline {
                   -Dsonar.projectName=Netflix-Clone \
                   -Dsonar.projectKey=Netflix-Clone \
                   -Dsonar.sources=Application-Code/src \
-                  -Dsonar.token=$MY_SONAR_TOKEN
+                  -Dsonar.token=$MY_SONAR_TOKEN \
+                  -Dsonar.login=$MY_SONAR_TOKEN 
             '''
         }
     }
