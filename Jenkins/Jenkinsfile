@@ -247,11 +247,15 @@ EOF
               --dockerfile /workspace/Dockerfile \
               --build-arg TMDB_V3_API_KEY=$TMDB_API_KEY \
               --destination ${ECR_REGISTRY}/${ECR_REPO}:${BUILD_NUMBER} \
-              --destination ${ECR_REGISTRY}/${ECR_REPO}:latest
+              --destination ${ECR_REGISTRY}/${ECR_REPO}:latest \
+              --digest-file=/tmp/image-digest.txt
 
             rm -rf kaniko-docker-config
             echo "Kaniko build and push complete"
         '''
+        script {
+            env.IMAGE_DIGEST = readFile('/tmp/image-digest.txt').trim()
+        }
     }
 }
 
@@ -290,8 +294,7 @@ EOF
 }
 EOF
 
-                cosign sign --key $COSIGN_KEY --yes \
-                  ${ECR_REGISTRY}/${ECR_REPO}:${BUILD_NUMBER}
+                cosign sign --key $COSIGN_KEY ${ECR_REPO}@${IMAGE_DIGEST}
 
                 rm -rf "$DOCKER_CONFIG"
                 echo "Image signed with Cosign"
