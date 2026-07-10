@@ -1,0 +1,296 @@
+def sendSlack(String message) {
+    sh """
+        set +x
+        SLACK_WEBHOOK=\$(aws secretsmanager get-secret-value \\
+            --secret-id "netflix-clone/prod/cicd-secrets" \\
+            --query SecretString --output text | jq -r .SLACK_WEBHOOK)
+        curl -s -X POST -H 'Content-type: application/json' \\
+            --data '{"text":"${message}"}' \\
+            "\$SLACK_WEBHOOK" > /dev/null
+    """
+}
+
+pipeline {
+    agent any
+
+    tools {
+        jdk 'jdk17'
+        nodejs 'nodejs18'
+    }
+
+    environment {
+        SCANNER_HOME    = tool 'sonar-server'
+        ECR_REGISTRY    = '177884821045.dkr.ecr.us-east-1.amazonaws.com'
+        ECR_REPO        = 'netflix-clone'
+        AWS_REGION      = 'us-east-1'
+        MANIFESTS_REPO  = 'https://github.com/RPriest/netflix-manifests.git'
+        DOJO_URL        = 'http://13.220.219.216:8080'
+        ENGAGEMENT_ID   = '1'
+        APP_DIR         = 'Application-Code'
+    }
+
+    stages {
+
+        stage('Clean Workspace') {
+            steps { cleanWs() }
+        }
+
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/RPriest/Netflix-Clone-K8S-End-to-End-Project.git'
+            }
+        }
+
+        stage('Gitleaks Secret Scan') {
+            steps {
+                sh 'gitleaks detect --source . --report-format json --report-path gitleaks-report.json --no-git --verbose || true'
+            }
+            post { always { archiveArtifacts artifacts: 'gitleaks-report.json', allowEmptyArchive: true } }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('sonar-server') {
+                    sh '''
+                        set +x
+                        SONAR_TOKEN=$(aws secretsmanager get-secret-value \
+                            --secret-id "netflix-clone/prod/cicd-secrets" \
+                            --query SecretString --output text | jq -r .SONAR_TOKEN)
+
+                        $SCANNER_HOME/bin/sonar-scanner \
+                          -Dsonar.projectName=Netflix-Clone \
+                          -Dsonar.projectKey=Netflix-Clone \
+                          -Dsonar.sources=Application-Code/src \
+                          -Dsonar.token=$SONAR_TOKEN
+                    '''
+                }
+            }
+        }
+
+        stage('SonarQube Quality Gate') {
+            steps {
+                script {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                dir("${APP_DIR}") {
+                    sh 'npm install'
+                }
+            }
+        }
+
+        stage('NJSScan SAST') {
+            steps {
+                dir("${APP_DIR}") {
+                    sh 'njsscan --json -o njsscan-report.json . || true'
+                }
+            }
+            post { always { archiveArtifacts artifacts: "${APP_DIR}/njsscan-report.json", allowEmptyArchive: true } }
+        }
+
+        stage('Semgrep SAST') {
+            steps {
+                sh 'semgrep ci --config p/owasp-top-ten --config p/cwe-top-25 --json -o semgrep-report.json || true'
+            }
+            post { always { archiveArtifacts artifacts: 'semgrep-report.json', allowEmptyArchive: true } }
+        }
+
+        stage('OWASP Dependency Check') {
+            steps {
+                dir("${APP_DIR}") {
+                    dependencyCheck(
+                        additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit --format JSON --format HTML --out dependency-check-report',
+                        odcInstallation: 'owasp-dp-check'
+                    )
+                    dependencyCheckPublisher pattern: '**/dependency-check-report/dependency-check-report.json'
+                }
+            }
+            post { always { archiveArtifacts artifacts: "${APP_DIR}/dependency-check-report/**", allowEmptyArchive: true } }
+        }
+
+        stage('RetireJS') {
+            steps {
+                dir("${APP_DIR}") {
+                    sh 'retire --path ./node_modules --outputformat json --outputpath retirejs-report.json --severity medium || true'
+                }
+            }
+            post { always { archiveArtifacts artifacts: "${APP_DIR}/retirejs-report.json", allowEmptyArchive: true } }
+        }
+
+        stage('Trivy Filesystem Scan') {
+            steps {
+                dir("${APP_DIR}") {
+                    sh '''
+                        trivy fs --severity HIGH,CRITICAL --ignore-unfixed --format json -o trivy-fs-report.json . || true
+                        trivy fs --severity HIGH,CRITICAL --ignore-unfixed . > trivyfs.txt 2>&1 || true
+                        cat trivyfs.txt
+                    '''
+                }
+            }
+            post { always { archiveArtifacts artifacts: "${APP_DIR}/trivy-fs-report.json,${APP_DIR}/trivyfs.txt", allowEmptyArchive: true } }
+        }
+
+        stage('Kaniko Build & Push') {
+            steps {
+                sh '''
+                    set +x
+                    TMDB_API_KEY=$(aws secretsmanager get-secret-value \
+                        --secret-id "netflix-clone/prod/cicd-secrets" \
+                        --query SecretString --output text | jq -r .TMDB_API_KEY)
+
+                    kaniko \
+                      --context $WORKSPACE/Application-Code \
+                      --dockerfile Application-Code/Dockerfile \
+                      --build-arg TMDB_V3_API_KEY=$TMDB_API_KEY \
+                      --destination ${ECR_REGISTRY}/${ECR_REPO}:${BUILD_NUMBER} \
+                      --destination ${ECR_REGISTRY}/${ECR_REPO}:latest
+
+                    echo "Kaniko build and push complete"
+                '''
+            }
+        }
+
+        stage('Trivy Image Scan') {
+            steps {
+                sh '''
+                    trivy image --severity HIGH,CRITICAL --ignore-unfixed --format json -o trivy-image-report.json ${ECR_REGISTRY}/${ECR_REPO}:${BUILD_NUMBER} || true
+                    trivy image --severity HIGH,CRITICAL ${ECR_REGISTRY}/${ECR_REPO}:${BUILD_NUMBER} > trivyimage.txt 2>&1 || true
+                    cat trivyimage.txt
+                '''
+            }
+            post { always { archiveArtifacts artifacts: 'trivy-image-report.json,trivyimage.txt', allowEmptyArchive: true } }
+        }
+
+        stage('Cosign Sign Image') {
+            steps {
+                withCredentials([file(credentialsId: 'cosign-private-key', variable: 'COSIGN_KEY')]) {
+                    sh '''
+                        set +x
+                        export COSIGN_PASSWORD=$(aws secretsmanager get-secret-value \
+                            --secret-id "netflix-clone/prod/cicd-secrets" \
+                            --query SecretString --output text | jq -r .COSIGN_PASSWORD)
+
+                        aws ecr get-login-password --region ${AWS_REGION} | \
+                          cosign login ${ECR_REGISTRY} -u AWS --password-stdin
+
+                        cosign sign --key $COSIGN_KEY --yes \
+                          ${ECR_REGISTRY}/${ECR_REPO}:${BUILD_NUMBER}
+
+                        echo "Image signed with Cosign"
+                    '''
+                }
+            }
+        }
+
+        stage('Generate SBOM') {
+            steps {
+                dir("${APP_DIR}") {
+                    sh '''
+                        cyclonedx-npm --output-format JSON --output-file sbom.cyclonedx.json --package-lock-only || true
+                        osv-scanner --sbom sbom.cyclonedx.json --format json > osv-scanner-report.json || true
+                        echo 'SBOM generated'
+                    '''
+                }
+            }
+            post { always { archiveArtifacts artifacts: "${APP_DIR}/sbom.cyclonedx.json,${APP_DIR}/osv-scanner-report.json", allowEmptyArchive: true } }
+        }
+
+        stage('Update Manifests Repo') {
+            steps {
+                sh '''
+                    set +x
+                    GITHUB_TOKEN=$(aws secretsmanager get-secret-value \
+                        --secret-id "netflix-clone/prod/cicd-secrets" \
+                        --query SecretString --output text | jq -r .GITHUB_TOKEN)
+
+                    ASKPASS_SCRIPT=$(mktemp)
+                    trap 'rm -f "$ASKPASS_SCRIPT"' EXIT
+                    cat > "$ASKPASS_SCRIPT" <<'EOS'
+#!/bin/sh
+echo "$GIT_ASKPASS_TOKEN"
+EOS
+                    chmod 700 "$ASKPASS_SCRIPT"
+                    export GIT_ASKPASS_TOKEN="$GITHUB_TOKEN"
+                    export GIT_ASKPASS="$ASKPASS_SCRIPT"
+
+                    git clone https://x-access-token@github.com/RPriest/netflix-manifests.git
+                    cd netflix-manifests
+                    git config user.email jenkins@devsecops.local
+                    git config user.name "Jenkins CI"
+
+                    sed -i "s|image: ${ECR_REGISTRY}/${ECR_REPO}:.*|image: ${ECR_REGISTRY}/${ECR_REPO}:${BUILD_NUMBER}|g" kubernetes/deployment.yml
+
+                    git add kubernetes/deployment.yml
+                    git commit -m "ci: update image to build ${BUILD_NUMBER}"
+                    git push origin main
+
+                    unset GIT_ASKPASS_TOKEN GIT_ASKPASS
+                    echo "Manifests updated --- ArgoCD will sync"
+                '''
+            }
+        }
+
+        stage('Wait for ArgoCD Sync') {
+            steps {
+                sh '''
+                    echo 'Waiting 60s for ArgoCD to sync...'
+                    sleep 60
+                    kubectl get pods -n default
+                    kubectl get ingress -n default
+                '''
+            }
+        }
+
+        stage('ZAP DAST Scan') {
+            steps {
+                sh '''
+                    ALB_URL=$(kubectl get ingress netflix-clone-ingress -n default -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+                    echo "Scanning: http://${ALB_URL}"
+                    docker run -v $(pwd):/zap/wrk/:rw --user root --network=host \
+                      ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
+                      -t http://${ALB_URL} -J zap-baseline-report.json -r zap-baseline-report.html -m 5 || true
+                '''
+            }
+            post { always { archiveArtifacts artifacts: 'zap-*.json,zap-*.html', allowEmptyArchive: true } }
+        }
+
+        stage('Upload to DefectDojo') {
+            steps {
+                sh '''
+                    set +x
+                    DEFECTDOJO_TOKEN=$(aws secretsmanager get-secret-value \
+                        --secret-id "netflix-clone/prod/cicd-secrets" \
+                        --query SecretString --output text | jq -r .DEFECTDOJO_TOKEN)
+
+                    pip3 install requests 2>/dev/null || true
+                    DOJO_URL=${DOJO_URL} DOJO_TOKEN=${DEFECTDOJO_TOKEN} ENGAGEMENT_ID=${ENGAGEMENT_ID} python3 upload-to-defectdojo.py
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            script {
+                sendSlack(":white_check_mark: *SUCCESS* ${env.JOB_NAME} #${env.BUILD_NUMBER} | Image: ${env.ECR_REGISTRY}/${env.ECR_REPO}:${env.BUILD_NUMBER} | ${env.BUILD_URL}")
+            }
+            emailext(attachLog: true,
+                subject: "[Jenkins] SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: "Build passed. View at: ${env.BUILD_URL}",
+                to: 'your-email@gmail.com', mimeType: 'text/html')
+        }
+        failure {
+            script {
+                sendSlack(":x: *FAILED* ${env.JOB_NAME} #${env.BUILD_NUMBER} | Stage: ${env.STAGE_NAME} | ${env.BUILD_URL}console")
+            }
+            emailext(attachLog: true,
+                subject: "[Jenkins] FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: "Build FAILED at stage: ${env.STAGE_NAME}. Check DefectDojo for findings.",
+                to: 'kloudtech91@gmail.com', mimeType: 'text/html')
+        }
+    }
+}
