@@ -50,36 +50,105 @@ pipeline {
 
        stage('SonarQube Analysis') {
     steps {
-        withSonarQubeEnv('sonar-server') {
-            sh '''
-                set +x
-                unset SONAR_TOKEN
+        sh '''
+            set +x
 
-                MY_SONAR_TOKEN=$(aws secretsmanager get-secret-value \
-                    --secret-id "netflix-clone/prod/cicd-secrets" \
-                    --query SecretString --output text | jq -r .SONAR_TOKEN)
+            SONAR_HOST_URL="http://localhost:9000"
 
-                echo "DEBUG: token length is ${#MY_SONAR_TOKEN}"
+            SONAR_TOKEN=$(aws secretsmanager get-secret-value \
+                --secret-id "netflix-clone/prod/cicd-secrets" \
+                --query SecretString \
+                --output text | jq -r .SONAR_TOKEN)
 
-                $SCANNER_HOME/bin/sonar-scanner \
-                  -X \
-                  -Dsonar.projectName=Netflix-Clone \
-                  -Dsonar.projectKey=Netflix-Clone \
-                  -Dsonar.sources=Application-Code/src \
-                  -Dsonar.token=$MY_SONAR_TOKEN \
-                  -Dsonar.login=$MY_SONAR_TOKEN 
-            '''
-        }
+            echo "Starting SonarQube analysis..."
+
+            $SCANNER_HOME/bin/sonar-scanner \
+                -Dsonar.host.url=$SONAR_HOST_URL \
+                -Dsonar.projectName=Netflix-Clone \
+                -Dsonar.projectKey=Netflix-Clone \
+                -Dsonar.sources=Application-Code/src \
+                -Dsonar.login=$SONAR_TOKEN
+
+            echo "SonarQube analysis submitted."
+        '''
     }
 }
 
-        stage('SonarQube Quality Gate') {
-            steps {
-                script {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
+stage('SonarQube Quality Gate') {
+    steps {
+        sh '''
+            set +x
+
+            SONAR_HOST_URL="http://localhost:9000"
+
+            SONAR_TOKEN=$(aws secretsmanager get-secret-value \
+                --secret-id "netflix-clone/prod/cicd-secrets" \
+                --query SecretString \
+                --output text | jq -r .SONAR_TOKEN)
+
+            REPORT_FILE=".scannerwork/report-task.txt"
+
+            if [ ! -f "$REPORT_FILE" ]; then
+                echo "ERROR: report-task.txt not found."
+                exit 1
+            fi
+
+            CE_TASK_URL=$(grep '^ceTaskUrl=' "$REPORT_FILE" | cut -d= -f2-)
+
+            if [ -z "$CE_TASK_URL" ]; then
+                echo "ERROR: Unable to determine SonarQube task URL."
+                exit 1
+            fi
+
+            echo "Waiting for SonarQube analysis to complete..."
+
+            while true
+            do
+                RESPONSE=$(curl -s -u "$SONAR_TOKEN:" "$CE_TASK_URL")
+
+                STATUS=$(echo "$RESPONSE" | jq -r '.task.status')
+
+                echo "Current status: $STATUS"
+
+                case "$STATUS" in
+                    SUCCESS)
+                        ANALYSIS_ID=$(echo "$RESPONSE" | jq -r '.task.analysisId')
+                        break
+                        ;;
+                    FAILED|CANCELED)
+                        echo "SonarQube Compute Engine task failed."
+                        exit 1
+                        ;;
+                    PENDING|IN_PROGRESS)
+                        sleep 5
+                        ;;
+                    *)
+                        echo "Unexpected status: $STATUS"
+                        echo "$RESPONSE"
+                        exit 1
+                        ;;
+                esac
+            done
+
+            QUALITY_GATE=$(curl -s -u "$SONAR_TOKEN:" \
+                "$SONAR_HOST_URL/api/qualitygates/project_status?analysisId=$ANALYSIS_ID" \
+                | jq -r '.projectStatus.status')
+
+            echo "Quality Gate Result: $QUALITY_GATE"
+
+            if [ "$QUALITY_GATE" != "OK" ]; then
+                echo "Quality Gate FAILED."
+
+                curl -s -u "$SONAR_TOKEN:" \
+                    "$SONAR_HOST_URL/api/qualitygates/project_status?analysisId=$ANALYSIS_ID" | jq
+
+                exit 1
+            fi
+
+            echo "Quality Gate PASSED."
+        '''
+    }
+}
 
         stage('Install Dependencies') {
             steps {
