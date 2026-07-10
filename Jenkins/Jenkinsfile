@@ -49,27 +49,26 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('sonar-server') {
-                    sh '''
-                        set +x
-                        SONAR_TOKEN=$(aws secretsmanager get-secret-value \
-                        --secret-id "netflix-clone/prod/cicd-secrets" \
-                        --query SecretString --output text | jq -r .SONAR_TOKEN)
+    steps {
+        withSonarQubeEnv('sonar-server') {
+            sh '''
+                set +x
+                SONAR_TOKEN=$(aws secretsmanager get-secret-value \
+                    --secret-id "netflix-clone/prod/cicd-secrets" \
+                    --query SecretString --output text | jq -r .SONAR_TOKEN)
 
-                        echo "DEBUG: token length is ${#SONAR_TOKEN}"
-                        echo "DEBUG: token prefix is ${SONAR_TOKEN:0:6}"
+                echo "DEBUG: token length is ${#SONAR_TOKEN}"
 
-                        $SCANNER_HOME/bin/sonar-scanner \
-                            -X \
-                          -Dsonar.projectName=Netflix-Clone \
-                          -Dsonar.projectKey=Netflix-Clone \
-                          -Dsonar.sources=Application-Code/src \
-                          -Dsonar.token=$SONAR_TOKEN
-                    '''
-                }
-            }
+                $SCANNER_HOME/bin/sonar-scanner \
+                  -X \
+                  -Dsonar.projectName=Netflix-Clone \
+                  -Dsonar.projectKey=Netflix-Clone \
+                  -Dsonar.sources=Application-Code/src \
+                  -Dsonar.token=$SONAR_TOKEN
+            '''
         }
+    }
+}
 
         stage('SonarQube Quality Gate') {
             steps {
