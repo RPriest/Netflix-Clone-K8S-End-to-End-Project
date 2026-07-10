@@ -181,25 +181,27 @@ pipeline {
         }
 
         stage('OWASP Dependency Check') {
-            steps {
-                dir('Application-Code') {
-                    sh '''
-                        mkdir -p dependency-check-report
-                    '''
+    steps {
+        dir('Application-Code') {
+            sh '''
+                mkdir -p dependency-check-report
+            '''
 
-                    dependencyCheck additionalArguments: '''
-                        --scan .
-                        --format ALL
-                        --out dependency-check-report
-                    ''',
-                    odcInstallation: 'owasp-dp-check'
+            dependencyCheck additionalArguments: '''
+                --scan .
+                --format JSON
+                --format SARIF
+                --format XML
+                --out dependency-check-report
+            ''',
+            odcInstallation: 'owasp-dp-check'
 
-                    dependencyCheckPublisher pattern: 'dependency-check-report/dependency-check-report.xml'
+            dependencyCheckPublisher pattern: 'dependency-check-report/dependency-check-report.xml'
 
-                    archiveArtifacts artifacts: 'dependency-check-report/**/*', fingerprint: true
-                }
-            }
+            archiveArtifacts artifacts: 'dependency-check-report/**/*', fingerprint: true
         }
+    }
+}
 
         stage('RetireJS') {
             steps {
@@ -322,19 +324,27 @@ EOF
         }
 
         stage('Generate SBOM') {
-            steps {
-                dir("${APP_DIR}") {
-                    sh '''
-                        # Run cdxgen via its own container (bundles Node >=20, required by its
-                        # undici dependency) rather than npx on the Jenkins agent's Node 18.
-                        docker run --rm --user "$(id -u):$(id -g)" -v "$(pwd)":/app:rw ghcr.io/cyclonedx/cdxgen:latest -o /app/sbom.cyclonedx.json /app || true
-                        osv-scanner --sbom sbom.cyclonedx.json --format json > osv-scanner-report.json || true
-                        echo 'SBOM generated'
-                    '''
-                }
-            }
-            post { always { archiveArtifacts artifacts: "${APP_DIR}/sbom.cyclonedx.json,${APP_DIR}/osv-scanner-report.json", allowEmptyArchive: true } }
+    steps {
+        dir("${APP_DIR}") {
+            sh '''
+                mkdir -p .cdxgen-temp
+                docker run --rm --user "$(id -u):$(id -g)" \
+                  -v "$(pwd)":/app:rw \
+                  -e CDXGEN_TEMP_DIR=/app/.cdxgen-temp \
+                  ghcr.io/cyclonedx/cdxgen:latest -o /app/sbom.cyclonedx.json /app
+
+                if [ ! -f sbom.cyclonedx.json ]; then
+                    echo "ERROR: SBOM generation failed"
+                    exit 1
+                fi
+
+                osv-scanner --sbom sbom.cyclonedx.json --format json > osv-scanner-report.json || true
+                echo 'SBOM generated'
+            '''
         }
+    }
+    post { always { archiveArtifacts artifacts: "${APP_DIR}/sbom.cyclonedx.json,${APP_DIR}/osv-scanner-report.json", allowEmptyArchive: true } }
+}
 
         stage('Update Manifests Repo') {
             steps {
@@ -394,6 +404,49 @@ EOS
                 '''
             }
         }
+
+        stage('Wait for Target Health') {
+    steps {
+        sh '''
+            set +x
+            TG_ARN=$(aws elbv2 describe-target-groups --region ${AWS_REGION} \
+              --query "TargetGroups[?contains(TargetGroupName, 'netflix')].TargetGroupArn" \
+              --output text)
+
+            if [ -z "$TG_ARN" ]; then
+                echo "ERROR: could not find target group"
+                exit 1
+            fi
+
+            echo "Waiting for targets on $TG_ARN to become healthy..."
+
+            for i in $(seq 1 18); do
+                UNHEALTHY=$(aws elbv2 describe-target-health --region ${AWS_REGION} \
+                  --target-group-arn "$TG_ARN" \
+                  --query "length(TargetHealthDescriptions[?TargetHealth.State!='healthy'])" \
+                  --output text)
+
+                TOTAL=$(aws elbv2 describe-target-health --region ${AWS_REGION} \
+                  --target-group-arn "$TG_ARN" \
+                  --query "length(TargetHealthDescriptions)" \
+                  --output text)
+
+                echo "Attempt $i: $UNHEALTHY unhealthy / $TOTAL total"
+
+                if [ "$UNHEALTHY" = "0" ] && [ "$TOTAL" != "0" ]; then
+                    echo "All targets healthy."
+                    exit 0
+                fi
+
+                sleep 10
+            done
+
+            echo "ERROR: targets did not become healthy in time. Current state:"
+            aws elbv2 describe-target-health --region ${AWS_REGION} --target-group-arn "$TG_ARN"
+            exit 1
+        '''
+    }
+}
 
         stage('ZAP DAST Scan') {
             steps {
