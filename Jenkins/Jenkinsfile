@@ -375,7 +375,9 @@ EOS
         stage('ZAP DAST Scan') {
             steps {
                 sh '''
-                    ALB_URL=$(kubectl get ingress netflix-clone-ingress -n default -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+                    ALB_URL=$(aws elbv2 describe-load-balancers --region ${AWS_REGION} \
+                      --query "LoadBalancers[?contains(LoadBalancerName, 'netflix')].DNSName" \
+                      --output text)
                     echo "Scanning: http://${ALB_URL}"
                     docker run -v $(pwd):/zap/wrk/:rw --user root --network=host \
                       ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
