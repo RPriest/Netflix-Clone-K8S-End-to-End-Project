@@ -146,8 +146,14 @@ pipeline {
                     fi
 
                     echo "Quality Gate PASSED."
+
+                    echo "Exporting issues for DefectDojo..."
+                    curl -s -u "$SONAR_TOKEN:" \
+                        "$SONAR_HOST_URL/api/issues/search?componentKeys=Netflix-Clone&resolved=false&ps=500" \
+                        -o sonar-report.json
                 '''
             }
+            post { always { archiveArtifacts artifacts: 'sonar-report.json', allowEmptyArchive: true } }
         }
 
         stage('Install Dependencies') {
