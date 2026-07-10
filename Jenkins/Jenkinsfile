@@ -218,24 +218,42 @@ stage('SonarQube Quality Gate') {
         }
 
         stage('Kaniko Build & Push') {
-            steps {
-                sh '''
-                    set +x
-                    TMDB_API_KEY=$(aws secretsmanager get-secret-value \
-                        --secret-id "netflix-clone/prod/cicd-secrets" \
-                        --query SecretString --output text | jq -r .TMDB_API_KEY)
+    steps {
+        sh '''
+            set +x
+            TMDB_API_KEY=$(aws secretsmanager get-secret-value \
+                --secret-id "netflix-clone/prod/cicd-secrets" \
+                --query SecretString --output text | jq -r .TMDB_API_KEY)
 
-                    kaniko \
-                      --context $WORKSPACE/Application-Code \
-                      --dockerfile Application-Code/Dockerfile \
-                      --build-arg TMDB_V3_API_KEY=$TMDB_API_KEY \
-                      --destination ${ECR_REGISTRY}/${ECR_REPO}:${BUILD_NUMBER} \
-                      --destination ${ECR_REGISTRY}/${ECR_REPO}:latest
+            ECR_PASSWORD=$(aws ecr get-login-password --region ${AWS_REGION})
+            AUTH=$(printf "AWS:%s" "$ECR_PASSWORD" | base64 -w0)
 
-                    echo "Kaniko build and push complete"
-                '''
-            }
-        }
+            mkdir -p kaniko-docker-config
+            cat > kaniko-docker-config/config.json <<EOF
+{
+  "auths": {
+    "${ECR_REGISTRY}": {
+      "auth": "${AUTH}"
+    }
+  }
+}
+EOF
+
+            docker run --rm \
+              -v "$WORKSPACE/Application-Code":/workspace \
+              -v "$WORKSPACE/kaniko-docker-config/config.json":/kaniko/.docker/config.json:ro \
+              gcr.io/kaniko-project/executor:latest \
+              --context /workspace \
+              --dockerfile /workspace/Dockerfile \
+              --build-arg TMDB_V3_API_KEY=$TMDB_API_KEY \
+              --destination ${ECR_REGISTRY}/${ECR_REPO}:${BUILD_NUMBER} \
+              --destination ${ECR_REGISTRY}/${ECR_REPO}:latest
+
+            rm -rf kaniko-docker-config
+            echo "Kaniko build and push complete"
+        '''
+    }
+}
 
         stage('Trivy Image Scan') {
             steps {
@@ -283,39 +301,44 @@ stage('SonarQube Quality Gate') {
         }
 
         stage('Update Manifests Repo') {
-            steps {
-                sh '''
-                    set +x
-                    GITHUB_TOKEN=$(aws secretsmanager get-secret-value \
-                        --secret-id "netflix-clone/prod/cicd-secrets" \
-                        --query SecretString --output text | jq -r .GITHUB_TOKEN)
+    steps {
+        sh '''
+            set +x
+            GITHUB_TOKEN=$(aws secretsmanager get-secret-value \
+                --secret-id "netflix-clone/prod/cicd-secrets" \
+                --query SecretString --output text | jq -r .GITHUB_TOKEN)
 
-                    ASKPASS_SCRIPT=$(mktemp)
-                    trap 'rm -f "$ASKPASS_SCRIPT"' EXIT
-                    cat > "$ASKPASS_SCRIPT" <<'EOS'
+            ASKPASS_SCRIPT=$(mktemp)
+            trap 'rm -f "$ASKPASS_SCRIPT"' EXIT
+            cat > "$ASKPASS_SCRIPT" <<'EOS'
 #!/bin/sh
 echo "$GIT_ASKPASS_TOKEN"
 EOS
-                    chmod 700 "$ASKPASS_SCRIPT"
-                    export GIT_ASKPASS_TOKEN="$GITHUB_TOKEN"
-                    export GIT_ASKPASS="$ASKPASS_SCRIPT"
+            chmod 700 "$ASKPASS_SCRIPT"
+            export GIT_ASKPASS_TOKEN="$GITHUB_TOKEN"
+            export GIT_ASKPASS="$ASKPASS_SCRIPT"
 
-                    git clone https://x-access-token@github.com/RPriest/netflix-manifests.git
-                    cd netflix-manifests
-                    git config user.email jenkins@devsecops.local
-                    git config user.name "Jenkins CI"
+            git clone https://x-access-token@github.com/RPriest/netflix-manifests.git
+            cd netflix-manifests
+            git config user.email jenkins@devsecops.local
+            git config user.name "Jenkins CI"
 
-                    sed -i "s|image: ${ECR_REGISTRY}/${ECR_REPO}:.*|image: ${ECR_REGISTRY}/${ECR_REPO}:${BUILD_NUMBER}|g" kubernetes/deployment.yml
+            sed -i "s|image: ${ECR_REGISTRY}/${ECR_REPO}:.*|image: ${ECR_REGISTRY}/${ECR_REPO}:${BUILD_NUMBER}|g" kubernetes/deployment.yml
 
-                    git add kubernetes/deployment.yml
-                    git commit -m "ci: update image to build ${BUILD_NUMBER}"
-                    git push origin main
+            git add kubernetes/deployment.yml
 
-                    unset GIT_ASKPASS_TOKEN GIT_ASKPASS
-                    echo "Manifests updated --- ArgoCD will sync"
-                '''
-            }
-        }
+            if git diff --cached --quiet; then
+                echo "No changes to manifest — image tag already up to date, skipping commit."
+            else
+                git commit -m "ci: update image to build ${BUILD_NUMBER}"
+                git push origin main
+                echo "Manifests updated --- ArgoCD will sync"
+            fi
+
+            unset GIT_ASKPASS_TOKEN GIT_ASKPASS
+        '''
+    }
+}
 
         stage('Wait for ArgoCD Sync') {
             steps {
