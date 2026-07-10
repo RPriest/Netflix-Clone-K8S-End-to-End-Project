@@ -354,15 +354,23 @@ EOS
 }
 
         stage('Wait for ArgoCD Sync') {
-            steps {
-                sh '''
-                    echo 'Waiting 60s for ArgoCD to sync...'
-                    sleep 60
-                    kubectl get pods -n default
-                    kubectl get ingress -n default
-                '''
-            }
-        }
+    steps {
+        sh '''
+            set +x
+            ARGOCD_TOKEN=$(aws secretsmanager get-secret-value \
+                --secret-id "netflix-clone/prod/cicd-secrets" \
+                --query SecretString --output text | jq -r .ARGOCD_TOKEN)
+
+            argocd app wait netflix-clone \
+              --sync --health \
+              --timeout 180 \
+              --auth-token "$ARGOCD_TOKEN" \
+              --server acdd8089cd45447938cd972873e0e8b2-639346841.us-east-1.elb.amazonaws.com \
+              --insecure \
+              --grpc-web
+        '''
+    }
+}
 
         stage('ZAP DAST Scan') {
             steps {
