@@ -24,7 +24,7 @@ pipeline {
         ECR_REPO        = 'netflix-clone'
         AWS_REGION      = 'us-east-1'
         MANIFESTS_REPO  = 'https://github.com/RPriest/netflix-manifests.git'
-        DOJO_URL        = 'http://13.220.219.216:8080'
+        DOJO_URL        = 'http://172.31.45.84:8080'
         ENGAGEMENT_ID   = '1'
         APP_DIR         = 'Application-Code'
     }
@@ -319,8 +319,9 @@ EOF
             steps {
                 dir("${APP_DIR}") {
                     sh '''
-                        # cdxgen auto-detects yarn.lock (cyclonedx-npm only supports package-lock.json)
-                        npx --yes @cyclonedx/cdxgen -o sbom.cyclonedx.json . || true
+                        # Run cdxgen via its own container (bundles Node >=20, required by its
+                        # undici dependency) rather than npx on the Jenkins agent's Node 18.
+                        docker run --rm -v "$(pwd)":/app:rw ghcr.io/cyclonedx/cdxgen:latest -o /app/sbom.cyclonedx.json /app || true
                         osv-scanner --sbom sbom.cyclonedx.json --format json > osv-scanner-report.json || true
                         echo 'SBOM generated'
                     '''
@@ -405,15 +406,17 @@ EOS
 
         stage('Upload to DefectDojo') {
             steps {
-                sh '''
-                    set +x
-                    DEFECTDOJO_TOKEN=$(aws secretsmanager get-secret-value \
-                        --secret-id "netflix-clone/prod/cicd-secrets" \
-                        --query SecretString --output text | jq -r .DEFECTDOJO_TOKEN)
+                timeout(time: 60, unit: 'SECONDS') {
+                    sh '''
+                        set +x
+                        DEFECTDOJO_TOKEN=$(aws secretsmanager get-secret-value \
+                            --secret-id "netflix-clone/prod/cicd-secrets" \
+                            --query SecretString --output text | jq -r .DEFECTDOJO_TOKEN)
 
-                    pip3 install requests 2>/dev/null || true
-                    DOJO_URL=${DOJO_URL} DOJO_TOKEN=${DEFECTDOJO_TOKEN} ENGAGEMENT_ID=${ENGAGEMENT_ID} python3 upload-to-defectdojo.py
-                '''
+                        pip3 install requests 2>/dev/null || true
+                        DOJO_URL=${DOJO_URL} DOJO_TOKEN=${DEFECTDOJO_TOKEN} ENGAGEMENT_ID=${ENGAGEMENT_ID} python3 upload-to-defectdojo.py
+                    ''' 
+                }
             }
         }
     }
