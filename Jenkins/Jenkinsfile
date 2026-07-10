@@ -175,17 +175,25 @@ stage('SonarQube Quality Gate') {
         }
 
         stage('OWASP Dependency Check') {
-            steps {
-                dir("${APP_DIR}") {
-                    dependencyCheck(
-                        additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit --format JSON --format HTML --out dependency-check-report',
-                        odcInstallation: 'owasp-dp-check'
-                    )
-                    dependencyCheckPublisher pattern: '**/dependency-check-report/dependency-check-report.json'
-                }
-            }
-            post { always { archiveArtifacts artifacts: "${APP_DIR}/dependency-check-report/**", allowEmptyArchive: true } }
+    steps {
+        dir('Application-Code') {
+            sh '''
+                mkdir -p dependency-check-report
+            '''
+
+            dependencyCheck additionalArguments: '''
+                --scan .
+                --format ALL
+                --out dependency-check-report
+            ''',
+            odcInstallation: 'owasp-dp-check'
+
+            dependencyCheckPublisher pattern: 'Application-Code/dependency-check-report/dependency-check-report.xml'
+
+            archiveArtifacts artifacts: 'Application-Code/dependency-check-report/**/*', fingerprint: true
         }
+    }
+}
 
         stage('RetireJS') {
             steps {
