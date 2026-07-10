@@ -2,9 +2,13 @@
 import requests, os, sys
 from datetime import date
 
-DOJO_URL   = os.environ.get('DOJO_URL', 'http://13.220.219.216:8080')
+DOJO_URL   = os.environ.get('DOJO_URL', 'http://172.31.45.84:8080')
 DOJO_TOKEN = os.environ['DOJO_TOKEN']
 ENGAGEMENT = os.environ.get('ENGAGEMENT_ID', '1')
+
+# Several scan reports are written inside Application-Code/ because their
+# Jenkinsfile stages run in dir("${APP_DIR}"), not the workspace root.
+APP_DIR = os.environ.get('APP_DIR', 'Application-Code')
 
 headers = {'Authorization': f'Token {DOJO_TOKEN}'}
 
@@ -31,11 +35,11 @@ def upload(scan_type, file_path):
 
 print('Uploading scan results to DefectDojo...')
 upload('Gitleaks Scan',             'gitleaks-report.json')
-upload('SonarQube Scan',            'sonar-report.json')
+upload('SonarQube API Import',      'sonar-report.json')
 upload('Semgrep JSON Report',       'semgrep-report.json')
-upload('Trivy Scan',                'trivy-fs-report.json')
+upload('Trivy Scan',                os.path.join(APP_DIR, 'trivy-fs-report.json'))
 upload('Trivy Scan',                'trivy-image-report.json')
-upload('OWASP Dependency Check',    'dependency-check-report/dependency-check-report.json')
+upload('OWASP Dependency Check',    os.path.join(APP_DIR, 'dependency-check-report', 'dependency-check-report.json'))
 upload('ZAP Scan',                  'zap-baseline-report.json')
-upload('CycloneDX Scan',            'sbom.cyclonedx.json')
+upload('CycloneDX Scan',            os.path.join(APP_DIR, 'sbom.cyclonedx.json'))
 print(f'Done. View at: {DOJO_URL}/engagement/{ENGAGEMENT}/')
