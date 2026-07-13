@@ -2,7 +2,7 @@
 import requests, os, sys
 from datetime import date
 
-DOJO_URL   = os.environ.get('DOJO_URL', 'http://172.31.45.84:8080')
+DOJO_URL   = os.environ.get('DOJO_URL', 'http://172.31.45.84:8080') #The IP address must be Dojo Private IP not Public IP
 DOJO_TOKEN = os.environ['DOJO_TOKEN']
 ENGAGEMENT = os.environ.get('ENGAGEMENT_ID', '1')
 
