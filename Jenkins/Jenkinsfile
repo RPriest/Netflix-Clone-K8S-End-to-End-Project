@@ -398,7 +398,7 @@ EOS
                       --sync --health \
                       --timeout 180 \
                       --auth-token "$ARGOCD_TOKEN" \
-                      --server acdd8089cd45447938cd972873e0e8b2-639346841.us-east-1.elb.amazonaws.com \
+                      --server a4d4cb25818fa42aea50627797f6c075-1681677328.us-east-1.elb.amazonaws.com \
                       --insecure \
                       --grpc-web
                 '''
