@@ -24,7 +24,7 @@ pipeline {
         ECR_REPO        = 'netflix-clone'
         AWS_REGION      = 'us-east-1'
         MANIFESTS_REPO  = 'https://github.com/RPriest/netflix-manifests.git'
-        DOJO_URL        = 'http://172.31.45.84:8080'
+        DOJO_URL        = 'http://172.31.27.183:8080'
         ENGAGEMENT_ID   = '1'
         APP_DIR         = 'Application-Code'
     }
