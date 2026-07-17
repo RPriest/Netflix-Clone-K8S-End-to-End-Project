@@ -2,114 +2,121 @@ def sendSlack(String message) {
     sh """
         set +x
         SLACK_WEBHOOK=\$(aws secretsmanager get-secret-value \\
-            --secret-id "netflix-clone/prod/cicd-secrets" \\
+            --secret-id "${env.SECRETS_ID}" \\
             --query SecretString --output text | jq -r .SLACK_WEBHOOK)
         curl -s -X POST -H 'Content-type: application/json' \\
             --data '{"text":"${message}"}' \\
             "\$SLACK_WEBHOOK" > /dev/null
     """
 }
-
 pipeline {
     agent any
 
+    // ============================================================
+    //  JENKINS GLOBAL TOOL NAMES
+    //  Must match the names configured under
+    //  "Manage Jenkins > Tools" on YOUR Jenkins instance.
+    // ============================================================
     tools {
         jdk 'jdk21'
         nodejs 'nodejs18'
     }
 
     environment {
-        SCANNER_HOME    = tool 'sonar-server'
-        ECR_REGISTRY    = '177884821045.dkr.ecr.us-east-1.amazonaws.com'
-        ECR_REPO        = 'netflix-clone'
-        AWS_REGION      = 'us-east-1'
-        MANIFESTS_REPO  = 'https://github.com/RPriest/netflix-manifests.git'
-        DOJO_URL        = 'http://172.31.27.183:8080'
-        ENGAGEMENT_ID   = '1'
-        APP_DIR         = 'Application-Code'
+        // ============================================================
+        //  >>> EDIT THIS SECTION FOR YOUR ENVIRONMENT <<<
+        // ============================================================
+        GITHUB_USERNAME     = 'RPriest'                       // GitHub org/user that owns BOTH repos below
+        APP_REPO_NAME       = 'Netflix-Clone-K8S-End-to-End-Project'
+        MANIFESTS_REPO_NAME = 'netflix-manifests'
+
+        AWS_ACCOUNT_ID      = '<YOUR_ACCOUNT_ID>'
+        AWS_REGION          = 'us-east-1'
+        ECR_REPO            = 'netflix-clone'
+
+        SECRETS_ID          = 'netflix-clone/prod/cicd-secrets'   // AWS Secrets Manager secret name
+        DOJO_URL            = 'http://<DOJO_PRIVATE_IP>:8080'
+        ENGAGEMENT_ID       = '1'
+
+        ARGO_URL            = 'ARGO_INTERNAL_URL'
+        ARGOCD_APP_NAME     = 'netflix-clone'
+
+        SONAR_TOOL_NAME     = 'sonar-server'            // name configured in "Manage Jenkins > System"
+        SONAR_PROJECT_KEY   = 'Netflix-Clone'
+
+        OWASP_DC_TOOL       = 'owasp-dp-check'          // Dependency-Check tool name in Jenkins
+        LB_NAME_FILTER      = 'netflix'                 // substring used to find your ALB / target group
+
+        // ============================================================
+        //  DERIVED VALUES - built from the section above.
+        //  You normally don't need to touch these.
+        // ============================================================
+        SCANNER_HOME   = tool "${SONAR_TOOL_NAME}"
+        ECR_REGISTRY   = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        MANIFESTS_REPO = "https://github.com/${GITHUB_USERNAME}/${MANIFESTS_REPO_NAME}.git"
+        APP_DIR        = 'Application-Code'
     }
 
     stages {
-
         stage('Clean Workspace') {
             steps { cleanWs() }
         }
-
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/RPriest/Netflix-Clone-K8S-End-to-End-Project.git'
+                git branch: 'main', url: "https://github.com/${GITHUB_USERNAME}/${APP_REPO_NAME}.git"
             }
         }
-
         stage('Gitleaks Secret Scan') {
             steps {
                 sh 'gitleaks detect --source . --report-format json --report-path gitleaks-report.json --no-git --verbose || true'
             }
             post { always { archiveArtifacts artifacts: 'gitleaks-report.json', allowEmptyArchive: true } }
         }
-
         stage('SonarQube Analysis') {
             steps {
                 sh '''
                     set +x
-
                     SONAR_HOST_URL="http://localhost:9000"
-
                     SONAR_TOKEN=$(aws secretsmanager get-secret-value \
-                        --secret-id "netflix-clone/prod/cicd-secrets" \
+                        --secret-id "$SECRETS_ID" \
                         --query SecretString \
                         --output text | jq -r .SONAR_TOKEN)
-
                     echo "Starting SonarQube analysis..."
-
                     $SCANNER_HOME/bin/sonar-scanner \
                         -Dsonar.host.url=$SONAR_HOST_URL \
-                        -Dsonar.projectName=Netflix-Clone \
-                        -Dsonar.projectKey=Netflix-Clone \
+                        -Dsonar.projectName=$SONAR_PROJECT_KEY \
+                        -Dsonar.projectKey=$SONAR_PROJECT_KEY \
                         -Dsonar.sources=Application-Code/src \
                         -Dsonar.login=$SONAR_TOKEN
-
                     echo "SonarQube analysis submitted."
                 '''
             }
         }
-
         stage('SonarQube Quality Gate') {
             steps {
                 sh '''
                     set +x
-
                     SONAR_HOST_URL="http://localhost:9000"
-
                     SONAR_TOKEN=$(aws secretsmanager get-secret-value \
-                        --secret-id "netflix-clone/prod/cicd-secrets" \
+                        --secret-id "$SECRETS_ID" \
                         --query SecretString \
                         --output text | jq -r .SONAR_TOKEN)
-
                     REPORT_FILE=".scannerwork/report-task.txt"
-
                     if [ ! -f "$REPORT_FILE" ]; then
                         echo "ERROR: report-task.txt not found."
                         exit 1
                     fi
-
                     CE_TASK_URL=$(grep '^ceTaskUrl=' "$REPORT_FILE" | cut -d= -f2-)
-
                     if [ -z "$CE_TASK_URL" ]; then
                         echo "ERROR: Unable to determine SonarQube task URL."
                         exit 1
                     fi
-
                     echo "Waiting for SonarQube analysis to complete..."
-
                     while true
                     do
                         RESPONSE=$(curl -s -u "$SONAR_TOKEN:" "$CE_TASK_URL")
-
                         STATUS=$(echo "$RESPONSE" | jq -r '.task.status')
-
                         echo "Current status: $STATUS"
-
                         case "$STATUS" in
                             SUCCESS)
                                 ANALYSIS_ID=$(echo "$RESPONSE" | jq -r '.task.analysisId')
@@ -129,33 +136,25 @@ pipeline {
                                 ;;
                         esac
                     done
-
                     QUALITY_GATE=$(curl -s -u "$SONAR_TOKEN:" \
                         "$SONAR_HOST_URL/api/qualitygates/project_status?analysisId=$ANALYSIS_ID" \
                         | jq -r '.projectStatus.status')
-
                     echo "Quality Gate Result: $QUALITY_GATE"
-
                     if [ "$QUALITY_GATE" != "OK" ]; then
                         echo "Quality Gate FAILED."
-
                         curl -s -u "$SONAR_TOKEN:" \
                             "$SONAR_HOST_URL/api/qualitygates/project_status?analysisId=$ANALYSIS_ID" | jq
-
                         exit 1
                     fi
-
                     echo "Quality Gate PASSED."
-
                     echo "Exporting issues for DefectDojo..."
                     curl -s -u "$SONAR_TOKEN:" \
-                        "$SONAR_HOST_URL/api/issues/search?componentKeys=Netflix-Clone&resolved=false&ps=500" \
+                        "$SONAR_HOST_URL/api/issues/search?componentKeys=$SONAR_PROJECT_KEY&resolved=false&ps=500" \
                         -o sonar-report.json
                 '''
             }
             post { always { archiveArtifacts artifacts: 'sonar-report.json', allowEmptyArchive: true } }
         }
-
         stage('Install Dependencies') {
             steps {
                 dir("${APP_DIR}") {
@@ -163,7 +162,6 @@ pipeline {
                 }
             }
         }
-
         stage('NJSScan SAST') {
             steps {
                 dir("${APP_DIR}") {
@@ -172,37 +170,31 @@ pipeline {
             }
             post { always { archiveArtifacts artifacts: "${APP_DIR}/njsscan-report.json", allowEmptyArchive: true } }
         }
-
         stage('Semgrep SAST') {
             steps {
                 sh 'semgrep ci --config p/owasp-top-ten --config p/cwe-top-25 --json -o semgrep-report.json || true'
             }
             post { always { archiveArtifacts artifacts: 'semgrep-report.json', allowEmptyArchive: true } }
         }
-
         stage('OWASP Dependency Check') {
-    steps {
-        dir('Application-Code') {
-            sh '''
-                mkdir -p dependency-check-report
-            '''
-
-            dependencyCheck additionalArguments: '''
-                --scan .
-                --format JSON
-                --format SARIF
-                --format XML
-                --out dependency-check-report
-            ''',
-            odcInstallation: 'owasp-dp-check'
-
-            dependencyCheckPublisher pattern: 'dependency-check-report/dependency-check-report.xml'
-
-            archiveArtifacts artifacts: 'dependency-check-report/**/*', fingerprint: true
+            steps {
+                dir('Application-Code') {
+                    sh '''
+                        mkdir -p dependency-check-report
+                    '''
+                    dependencyCheck additionalArguments: '''
+                        --scan .
+                        --format JSON
+                        --format SARIF
+                        --format XML
+                        --out dependency-check-report
+                    ''',
+                    odcInstallation: "${OWASP_DC_TOOL}"
+                    dependencyCheckPublisher pattern: 'dependency-check-report/dependency-check-report.xml'
+                    archiveArtifacts artifacts: 'dependency-check-report/**/*', fingerprint: true
+                }
+            }
         }
-    }
-}
-
         stage('RetireJS') {
             steps {
                 dir("${APP_DIR}") {
@@ -211,7 +203,6 @@ pipeline {
             }
             post { always { archiveArtifacts artifacts: "${APP_DIR}/retirejs-report.json", allowEmptyArchive: true } }
         }
-
         stage('Trivy Filesystem Scan') {
             steps {
                 dir("${APP_DIR}") {
@@ -224,18 +215,15 @@ pipeline {
             }
             post { always { archiveArtifacts artifacts: "${APP_DIR}/trivy-fs-report.json,${APP_DIR}/trivyfs.txt", allowEmptyArchive: true } }
         }
-
         stage('Kaniko Build & Push') {
             steps {
                 sh '''
                     set +x
                     TMDB_API_KEY=$(aws secretsmanager get-secret-value \
-                        --secret-id "netflix-clone/prod/cicd-secrets" \
+                        --secret-id "$SECRETS_ID" \
                         --query SecretString --output text | jq -r .TMDB_API_KEY)
-
                     ECR_PASSWORD=$(aws ecr get-login-password --region ${AWS_REGION})
                     AUTH=$(printf "AWS:%s" "$ECR_PASSWORD" | base64 -w0)
-
                     mkdir -p kaniko-docker-config
                     cat > kaniko-docker-config/config.json <<EOF
 {
@@ -246,13 +234,11 @@ pipeline {
   }
 }
 EOF
-
                     # Shared directory so the digest file survives after the
                     # ephemeral --rm Kaniko container exits. Writing it to
                     # the container's own /tmp (as before) loses the file
                     # the moment the container is removed.
                     mkdir -p kaniko-digest
-
                     docker run --rm \
                       -v "$WORKSPACE/Application-Code":/workspace \
                       -v "$WORKSPACE/kaniko-docker-config/config.json":/kaniko/.docker/config.json:ro \
@@ -264,7 +250,6 @@ EOF
                       --destination ${ECR_REGISTRY}/${ECR_REPO}:${BUILD_NUMBER} \
                       --destination ${ECR_REGISTRY}/${ECR_REPO}:latest \
                       --digest-file=/kaniko-digest/image-digest.txt
-
                     rm -rf kaniko-docker-config
                     echo "Kaniko build and push complete"
                 '''
@@ -278,7 +263,6 @@ EOF
                 }
             }
         }
-
         stage('Trivy Image Scan') {
             steps {
                 sh '''
@@ -289,19 +273,16 @@ EOF
             }
             post { always { archiveArtifacts artifacts: 'trivy-image-report.json,trivyimage.txt', allowEmptyArchive: true } }
         }
-
         stage('Cosign Sign Image') {
             steps {
                 withCredentials([file(credentialsId: 'cosign-private-key', variable: 'COSIGN_KEY')]) {
                     sh '''
                         set +x
                         export COSIGN_PASSWORD=$(aws secretsmanager get-secret-value \
-                            --secret-id "netflix-clone/prod/cicd-secrets" \
+                            --secret-id "$SECRETS_ID" \
                             --query SecretString --output text | jq -r .COSIGN_PASSWORD)
-
                         ECR_PASSWORD=$(aws ecr get-login-password --region ${AWS_REGION})
                         AUTH=$(printf "AWS:%s" "$ECR_PASSWORD" | base64 -w0)
-
                         export DOCKER_CONFIG="$WORKSPACE/cosign-docker-config"
                         mkdir -p "$DOCKER_CONFIG"
                         cat > "$DOCKER_CONFIG/config.json" <<EOF
@@ -313,47 +294,40 @@ EOF
   }
 }
 EOF
-
                         cosign sign --key $COSIGN_KEY ${ECR_REGISTRY}/${ECR_REPO}@${IMAGE_DIGEST}
-
                         rm -rf "$DOCKER_CONFIG"
                         echo "Image signed with Cosign"
                     '''
                 }
             }
         }
-
         stage('Generate SBOM') {
-    steps {
-        dir("${APP_DIR}") {
-            sh '''
-                mkdir -p .cdxgen-temp
-                docker run --rm --user "$(id -u):$(id -g)" \
-                  -v "$(pwd)":/app:rw \
-                  -e CDXGEN_TEMP_DIR=/app/.cdxgen-temp \
-                  ghcr.io/cyclonedx/cdxgen:latest -o /app/sbom.cyclonedx.json /app
-
-                if [ ! -f sbom.cyclonedx.json ]; then
-                    echo "ERROR: SBOM generation failed"
-                    exit 1
-                fi
-
-                osv-scanner --sbom sbom.cyclonedx.json --format json > osv-scanner-report.json || true
-                echo 'SBOM generated'
-            '''
+            steps {
+                dir("${APP_DIR}") {
+                    sh '''
+                        mkdir -p .cdxgen-temp
+                        docker run --rm --user "$(id -u):$(id -g)" \
+                          -v "$(pwd)":/app:rw \
+                          -e CDXGEN_TEMP_DIR=/app/.cdxgen-temp \
+                          ghcr.io/cyclonedx/cdxgen:latest -o /app/sbom.cyclonedx.json /app
+                        if [ ! -f sbom.cyclonedx.json ]; then
+                            echo "ERROR: SBOM generation failed"
+                            exit 1
+                        fi
+                        osv-scanner --sbom sbom.cyclonedx.json --format json > osv-scanner-report.json || true
+                        echo 'SBOM generated'
+                    '''
+                }
+            }
+            post { always { archiveArtifacts artifacts: "${APP_DIR}/sbom.cyclonedx.json,${APP_DIR}/osv-scanner-report.json", allowEmptyArchive: true } }
         }
-    }
-    post { always { archiveArtifacts artifacts: "${APP_DIR}/sbom.cyclonedx.json,${APP_DIR}/osv-scanner-report.json", allowEmptyArchive: true } }
-}
-
         stage('Update Manifests Repo') {
             steps {
                 sh '''
                     set +x
                     GITHUB_TOKEN=$(aws secretsmanager get-secret-value \
-                        --secret-id "netflix-clone/prod/cicd-secrets" \
+                        --secret-id "$SECRETS_ID" \
                         --query SecretString --output text | jq -r .GITHUB_TOKEN)
-
                     ASKPASS_SCRIPT=$(mktemp)
                     trap 'rm -f "$ASKPASS_SCRIPT"' EXIT
                     cat > "$ASKPASS_SCRIPT" <<'EOS'
@@ -363,96 +337,79 @@ EOS
                     chmod 700 "$ASKPASS_SCRIPT"
                     export GIT_ASKPASS_TOKEN="$GITHUB_TOKEN"
                     export GIT_ASKPASS="$ASKPASS_SCRIPT"
-
-                    git clone https://x-access-token@github.com/RPriest/netflix-manifests.git
-                    cd netflix-manifests
+                    git clone "$MANIFESTS_REPO"
+                    cd "$MANIFESTS_REPO_NAME"
                     git config user.email jenkins@devsecops.local
                     git config user.name "Jenkins CI"
-
                     sed -i "s|image: ${ECR_REGISTRY}/${ECR_REPO}:.*|image: ${ECR_REGISTRY}/${ECR_REPO}:${BUILD_NUMBER}|g" kubernetes/deployment.yml
-
                     git add kubernetes/deployment.yml
-
                     if git diff --cached --quiet; then
-                        echo "No changes to manifest — image tag already up to date, skipping commit."
+                        echo "No changes to manifest - image tag already up to date, skipping commit."
                     else
                         git commit -m "ci: update image to build ${BUILD_NUMBER}"
                         git push origin main
                         echo "Manifests updated --- ArgoCD will sync"
                     fi
-
                     unset GIT_ASKPASS_TOKEN GIT_ASKPASS
                 '''
             }
         }
-
         stage('Wait for ArgoCD Sync') {
             steps {
                 sh '''
                     set +x
                     ARGOCD_TOKEN=$(aws secretsmanager get-secret-value \
-                        --secret-id "netflix-clone/prod/cicd-secrets" \
+                        --secret-id "$SECRETS_ID" \
                         --query SecretString --output text | jq -r .ARGOCD_TOKEN)
-
-                    argocd app wait netflix-clone \
+                    argocd app wait "$ARGOCD_APP_NAME" \
                       --sync --health \
                       --timeout 180 \
                       --auth-token "$ARGOCD_TOKEN" \
-                      --server a4d4cb25818fa42aea50627797f6c075-1681677328.us-east-1.elb.amazonaws.com \
+                      --server ${ARGO_URL} \
                       --insecure \
                       --grpc-web
                 '''
             }
         }
-
         stage('Wait for Target Health') {
-    steps {
-        sh '''
-            set +x
-            TG_ARN=$(aws elbv2 describe-target-groups --region ${AWS_REGION} \
-              --query "TargetGroups[?contains(TargetGroupName, 'netflix')].TargetGroupArn" \
-              --output text)
-
-            if [ -z "$TG_ARN" ]; then
-                echo "ERROR: could not find target group"
-                exit 1
-            fi
-
-            echo "Waiting for targets on $TG_ARN to become healthy..."
-
-            for i in $(seq 1 18); do
-                UNHEALTHY=$(aws elbv2 describe-target-health --region ${AWS_REGION} \
-                  --target-group-arn "$TG_ARN" \
-                  --query "length(TargetHealthDescriptions[?TargetHealth.State!='healthy'])" \
-                  --output text)
-
-                TOTAL=$(aws elbv2 describe-target-health --region ${AWS_REGION} \
-                  --target-group-arn "$TG_ARN" \
-                  --query "length(TargetHealthDescriptions)" \
-                  --output text)
-
-                echo "Attempt $i: $UNHEALTHY unhealthy / $TOTAL total"
-
-                if [ "$UNHEALTHY" = "0" ] && [ "$TOTAL" != "0" ]; then
-                    echo "All targets healthy."
-                    exit 0
-                fi
-
-                sleep 10
-            done
-
-            echo "ERROR: targets did not become healthy in time. Current state:"
-            aws elbv2 describe-target-health --region ${AWS_REGION} --target-group-arn "$TG_ARN"
-            exit 1
-        '''
-    }
-}
-
+            steps {
+                sh '''
+                    set +x
+                    TG_ARN=$(aws elbv2 describe-target-groups --region ${AWS_REGION} \
+                      --query "TargetGroups[?contains(TargetGroupName, '${LB_NAME_FILTER}')].TargetGroupArn" \
+                      --output text)
+                    if [ -z "$TG_ARN" ]; then
+                        echo "ERROR: could not find target group"
+                        exit 1
+                    fi
+                    echo "Waiting for targets on $TG_ARN to become healthy..."
+                    for i in $(seq 1 18); do
+                        UNHEALTHY=$(aws elbv2 describe-target-health --region ${AWS_REGION} \
+                          --target-group-arn "$TG_ARN" \
+                          --query "length(TargetHealthDescriptions[?TargetHealth.State!='healthy'])" \
+                          --output text)
+                        TOTAL=$(aws elbv2 describe-target-health --region ${AWS_REGION} \
+                          --target-group-arn "$TG_ARN" \
+                          --query "length(TargetHealthDescriptions)" \
+                          --output text)
+                        echo "Attempt $i: $UNHEALTHY unhealthy / $TOTAL total"
+                        if [ "$UNHEALTHY" = "0" ] && [ "$TOTAL" != "0" ]; then
+                            echo "All targets healthy."
+                            exit 0
+                        fi
+                        sleep 10
+                    done
+                    echo "ERROR: targets did not become healthy in time. Current state:"
+                    aws elbv2 describe-target-health --region ${AWS_REGION} --target-group-arn "$TG_ARN"
+                    exit 1
+                '''
+            }
+        }
         stage('ZAP DAST Scan') {
             steps {
                 sh '''
                     ALB_URL=$(aws elbv2 describe-load-balancers --region ${AWS_REGION} \
-                      --query "LoadBalancers[?contains(LoadBalancerName, 'netflix')].DNSName" \
+                      --query "LoadBalancers[?contains(LoadBalancerName, '${LB_NAME_FILTER}')].DNSName" \
                       --output text)
                     echo "Scanning: http://${ALB_URL}"
                     docker run -v $(pwd):/zap/wrk/:rw --user root --network=host \
@@ -462,24 +419,21 @@ EOS
             }
             post { always { archiveArtifacts artifacts: 'zap-*.json,zap-*.html,zap-*.xml', allowEmptyArchive: true } }
         }
-
         stage('Upload to DefectDojo') {
             steps {
                 timeout(time: 60, unit: 'SECONDS') {
                     sh '''
                         set +x
                         DEFECTDOJO_TOKEN=$(aws secretsmanager get-secret-value \
-                            --secret-id "netflix-clone/prod/cicd-secrets" \
+                            --secret-id "$SECRETS_ID" \
                             --query SecretString --output text | jq -r .DEFECTDOJO_TOKEN)
-
                         pip3 install requests 2>/dev/null || true
                         DOJO_URL=${DOJO_URL} DOJO_TOKEN=${DEFECTDOJO_TOKEN} ENGAGEMENT_ID=${ENGAGEMENT_ID} python3 upload-to-defectdojo.py
-                    ''' 
+                    '''
                 }
             }
         }
     }
-
     post {
         success {
             script {
