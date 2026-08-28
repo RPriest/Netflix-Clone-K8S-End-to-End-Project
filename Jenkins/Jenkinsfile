@@ -30,15 +30,15 @@ pipeline {
         APP_REPO_NAME       = 'Netflix-Clone-K8S-End-to-End-Project'
         MANIFESTS_REPO_NAME = 'netflix-manifests'
 
-        AWS_ACCOUNT_ID      = '<YOUR_ACCOUNT_ID>'
+        AWS_ACCOUNT_ID      = '651532008087'
         AWS_REGION          = 'us-east-1'
         ECR_REPO            = 'netflix-clone'
 
         SECRETS_ID          = 'netflix-clone/prod/cicd-secrets'   // AWS Secrets Manager secret name
-        DOJO_URL            = 'http://<DOJO_PRIVATE_IP>:8080'
+        DOJO_URL            = 'http://172.31.38.87:8080'
         ENGAGEMENT_ID       = '1'
 
-        ARGO_URL            = 'ARGO_INTERNAL_URL'
+        ARGO_URL            = 'https://k8s-argocd-argocdse-9e3336f273-dd9f378a1683ac41.elb.us-east-1.amazonaws.com'
         ARGOCD_APP_NAME     = 'netflix-clone'
 
         SONAR_TOOL_NAME     = 'sonar-server'            // name configured in "Manage Jenkins > System"
