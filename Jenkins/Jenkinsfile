@@ -185,9 +185,10 @@ pipeline {
                     script {
                         env.NVD_API_KEY = sh(
                             script: '''
+                                set +x
                                 aws secretsmanager get-secret-value \
-                                  --secret-id netflix-clone/prod/cicd-secrets \
-                                  --query SecretString --output text | jq -r .NVD_API_KEY
+                                    --secret-id "$SECRETS_ID" \
+                                    --query SecretString --output text | jq -r .NVD_API_KEY
                             ''',
                             returnStdout: true
                         ).trim()
@@ -203,6 +204,9 @@ pipeline {
                     odcInstallation: "${OWASP_DC_TOOL}"
                     dependencyCheckPublisher pattern: 'dependency-check-report/dependency-check-report.xml'
                     archiveArtifacts artifacts: 'dependency-check-report/**/*', fingerprint: true
+                }
+                script {
+                    env.NVD_API_KEY = ''
                 }
             }
         }
