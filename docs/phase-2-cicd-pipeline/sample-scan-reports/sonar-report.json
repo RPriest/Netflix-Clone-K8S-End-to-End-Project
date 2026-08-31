@@ -1,0 +1,677 @@
+{
+  "total": 17,
+  "p": 1,
+  "ps": 500,
+  "paging": {
+    "pageIndex": 1,
+    "pageSize": 500,
+    "total": 17
+  },
+  "effortTotal": 98,
+  "issues": [
+    {
+      "key": "AaBKzyCWVkzlIUEGkd-N",
+      "rule": "typescript:S6479",
+      "severity": "MAJOR",
+      "component": "Netflix-Clone:Application-Code/src/components/GenreBreadcrumbs.tsx",
+      "project": "Netflix-Clone",
+      "line": 28,
+      "hash": "3720d5f7ff7bd048fdc143de33efa929",
+      "textRange": {
+        "startLine": 28,
+        "endLine": 28,
+        "startOffset": 25,
+        "endOffset": 28
+      },
+      "flows": [],
+      "status": "OPEN",
+      "message": "Do not use Array index in keys",
+      "effort": "5min",
+      "debt": "5min",
+      "author": "rpriest@gmail.com",
+      "tags": [
+        "jsx",
+        "performance",
+        "react"
+      ],
+      "creationDate": "2026-07-08T10:49:03+0000",
+      "updateDate": "2026-08-28T23:57:45+0000",
+      "type": "CODE_SMELL",
+      "scope": "MAIN",
+      "quickFixAvailable": false,
+      "messageFormattings": []
+    },
+    {
+      "key": "AaBKzyDRVkzlIUEGkd-R",
+      "rule": "typescript:S6479",
+      "severity": "MAJOR",
+      "component": "Netflix-Clone:Application-Code/src/components/GridWithInfiniteScroll.tsx",
+      "project": "Netflix-Clone",
+      "line": 54,
+      "hash": "d5c63bf8f3fe4290e1e74f5bb673339e",
+      "textRange": {
+        "startLine": 54,
+        "endLine": 54,
+        "startOffset": 21,
+        "endOffset": 41
+      },
+      "flows": [],
+      "status": "OPEN",
+      "message": "Do not use Array index in keys",
+      "effort": "5min",
+      "debt": "5min",
+      "author": "rpriest@gmail.com",
+      "tags": [
+        "jsx",
+        "performance",
+        "react"
+      ],
+      "creationDate": "2026-07-08T10:49:03+0000",
+      "updateDate": "2026-08-28T23:57:45+0000",
+      "type": "CODE_SMELL",
+      "scope": "MAIN",
+      "quickFixAvailable": false,
+      "messageFormattings": []
+    },
+    {
+      "key": "AaBKzyDMVkzlIUEGkd-P",
+      "rule": "typescript:S125",
+      "severity": "MAJOR",
+      "component": "Netflix-Clone:Application-Code/src/components/VideoItemWithHoverPure.tsx",
+      "project": "Netflix-Clone",
+      "line": 33,
+      "hash": "89e97201762e880cee9c7e9881f973a5",
+      "textRange": {
+        "startLine": 33,
+        "endLine": 33,
+        "startOffset": 12,
+        "endOffset": 45
+      },
+      "flows": [],
+      "status": "OPEN",
+      "message": "Remove this commented out code.",
+      "effort": "5min",
+      "debt": "5min",
+      "author": "rpriest@gmail.com",
+      "tags": [
+        "unused"
+      ],
+      "creationDate": "2026-07-08T10:49:03+0000",
+      "updateDate": "2026-08-28T23:57:45+0000",
+      "type": "CODE_SMELL",
+      "scope": "MAIN",
+      "quickFixAvailable": true,
+      "messageFormattings": []
+    },
+    {
+      "key": "AaBKzyDMVkzlIUEGkd-Q",
+      "rule": "typescript:S125",
+      "severity": "MAJOR",
+      "component": "Netflix-Clone:Application-Code/src/components/VideoItemWithHoverPure.tsx",
+      "project": "Netflix-Clone",
+      "line": 37,
+      "hash": "66f63d6f7bfeeea9d6e470637ce5ef9f",
+      "textRange": {
+        "startLine": 37,
+        "endLine": 37,
+        "startOffset": 12,
+        "endOffset": 45
+      },
+      "flows": [],
+      "status": "OPEN",
+      "message": "Remove this commented out code.",
+      "effort": "5min",
+      "debt": "5min",
+      "author": "rpriest@gmail.com",
+      "tags": [
+        "unused"
+      ],
+      "creationDate": "2026-07-08T10:49:03+0000",
+      "updateDate": "2026-08-28T23:57:45+0000",
+      "type": "CODE_SMELL",
+      "scope": "MAIN",
+      "quickFixAvailable": true,
+      "messageFormattings": []
+    },
+    {
+      "key": "AaBKzyC6VkzlIUEGkd-O",
+      "rule": "typescript:S1874",
+      "severity": "MINOR",
+      "component": "Netflix-Clone:Application-Code/src/components/VideoPortalContainer.tsx",
+      "project": "Netflix-Clone",
+      "line": 58,
+      "hash": "b5ce095a7238b3b495494519b28dfa64",
+      "textRange": {
+        "startLine": 58,
+        "endLine": 58,
+        "startOffset": 37,
+        "endOffset": 48
+      },
+      "flows": [],
+      "status": "OPEN",
+      "message": "'pageYOffset' is deprecated. This is a legacy alias of `scrollY`.",
+      "effort": "15min",
+      "debt": "15min",
+      "author": "rpriest@gmail.com",
+      "tags": [
+        "cwe",
+        "obsolete"
+      ],
+      "creationDate": "2026-07-08T10:49:03+0000",
+      "updateDate": "2026-08-28T23:57:45+0000",
+      "type": "CODE_SMELL",
+      "scope": "MAIN",
+      "quickFixAvailable": false,
+      "messageFormattings": []
+    },
+    {
+      "key": "AaBKzx8sVkzlIUEGkd-I",
+      "rule": "typescript:S6479",
+      "severity": "MAJOR",
+      "component": "Netflix-Clone:Application-Code/src/components/slick-slider/SlickSlider.tsx",
+      "project": "Netflix-Clone",
+      "line": 172,
+      "hash": "bcd64d9188d76642cf9e97181dc07264",
+      "textRange": {
+        "startLine": 172,
+        "endLine": 172,
+        "startOffset": 36,
+        "endOffset": 41
+      },
+      "flows": [],
+      "status": "OPEN",
+      "message": "Do not use Array index in keys",
+      "effort": "5min",
+      "debt": "5min",
+      "author": "rpriest@gmail.com",
+      "tags": [
+        "jsx",
+        "performance",
+        "react"
+      ],
+      "creationDate": "2026-07-08T10:49:03+0000",
+      "updateDate": "2026-08-28T23:57:45+0000",
+      "type": "CODE_SMELL",
+      "scope": "MAIN",
+      "quickFixAvailable": false,
+      "messageFormattings": []
+    },
+    {
+      "key": "AaBKzyB7VkzlIUEGkd-J",
+      "rule": "typescript:S125",
+      "severity": "MAJOR",
+      "component": "Netflix-Clone:Application-Code/src/components/watch/VideoJSPlayer.tsx",
+      "project": "Netflix-Clone",
+      "line": 23,
+      "hash": "ae01e63b10a8463985f8954d21606042",
+      "textRange": {
+        "startLine": 23,
+        "endLine": 23,
+        "startOffset": 8,
+        "endOffset": 75
+      },
+      "flows": [],
+      "status": "OPEN",
+      "message": "Remove this commented out code.",
+      "effort": "5min",
+      "debt": "5min",
+      "author": "rpriest@gmail.com",
+      "tags": [
+        "unused"
+      ],
+      "creationDate": "2026-07-08T10:49:03+0000",
+      "updateDate": "2026-08-28T23:57:45+0000",
+      "type": "CODE_SMELL",
+      "scope": "MAIN",
+      "quickFixAvailable": true,
+      "messageFormattings": []
+    },
+    {
+      "key": "AaBKzyB8VkzlIUEGkd-K",
+      "rule": "typescript:S125",
+      "severity": "MAJOR",
+      "component": "Netflix-Clone:Application-Code/src/components/watch/VideoJSPlayer.tsx",
+      "project": "Netflix-Clone",
+      "line": 34,
+      "hash": "da542ae73313166063d63fb2088ca620",
+      "textRange": {
+        "startLine": 34,
+        "endLine": 47,
+        "startOffset": 8,
+        "endOffset": 14
+      },
+      "flows": [],
+      "status": "OPEN",
+      "message": "Remove this commented out code.",
+      "effort": "5min",
+      "debt": "5min",
+      "author": "rpriest@gmail.com",
+      "tags": [
+        "unused"
+      ],
+      "creationDate": "2026-07-08T10:49:03+0000",
+      "updateDate": "2026-08-28T23:57:45+0000",
+      "type": "CODE_SMELL",
+      "scope": "MAIN",
+      "quickFixAvailable": true,
+      "messageFormattings": []
+    },
+    {
+      "key": "AaBKzyB8VkzlIUEGkd-L",
+      "rule": "typescript:S125",
+      "severity": "MAJOR",
+      "component": "Netflix-Clone:Application-Code/src/components/watch/VideoJSPlayer.tsx",
+      "project": "Netflix-Clone",
+      "line": 49,
+      "hash": "8f18db30e26a92a4db39d2d067605a27",
+      "textRange": {
+        "startLine": 49,
+        "endLine": 61,
+        "startOffset": 8,
+        "endOffset": 14
+      },
+      "flows": [],
+      "status": "OPEN",
+      "message": "Remove this commented out code.",
+      "effort": "5min",
+      "debt": "5min",
+      "author": "rpriest@gmail.com",
+      "tags": [
+        "unused"
+      ],
+      "creationDate": "2026-07-08T10:49:03+0000",
+      "updateDate": "2026-08-28T23:57:45+0000",
+      "type": "CODE_SMELL",
+      "scope": "MAIN",
+      "quickFixAvailable": true,
+      "messageFormattings": []
+    },
+    {
+      "key": "AaBKzyB8VkzlIUEGkd-M",
+      "rule": "typescript:S125",
+      "severity": "MAJOR",
+      "component": "Netflix-Clone:Application-Code/src/components/watch/VideoJSPlayer.tsx",
+      "project": "Netflix-Clone",
+      "line": 67,
+      "hash": "61e36a7a48654d9e7334ba521a1ac737",
+      "textRange": {
+        "startLine": 67,
+        "endLine": 67,
+        "startOffset": 8,
+        "endOffset": 45
+      },
+      "flows": [],
+      "status": "OPEN",
+      "message": "Remove this commented out code.",
+      "effort": "5min",
+      "debt": "5min",
+      "author": "rpriest@gmail.com",
+      "tags": [
+        "unused"
+      ],
+      "creationDate": "2026-07-08T10:49:03+0000",
+      "updateDate": "2026-08-28T23:57:45+0000",
+      "type": "CODE_SMELL",
+      "scope": "MAIN",
+      "quickFixAvailable": true,
+      "messageFormattings": []
+    },
+    {
+      "key": "AaBKzyFUVkzlIUEGkd-Z",
+      "rule": "typescript:S125",
+      "severity": "MAJOR",
+      "component": "Netflix-Clone:Application-Code/src/hoc/withPagination.tsx",
+      "project": "Netflix-Clone",
+      "line": 53,
+      "hash": "dec39cdad4bb435d2876f9c6b23b32b3",
+      "textRange": {
+        "startLine": 53,
+        "endLine": 53,
+        "startOffset": 6,
+        "endOffset": 55
+      },
+      "flows": [],
+      "status": "OPEN",
+      "message": "Remove this commented out code.",
+      "effort": "5min",
+      "debt": "5min",
+      "author": "rpriest@gmail.com",
+      "tags": [
+        "unused"
+      ],
+      "creationDate": "2026-07-08T10:49:03+0000",
+      "updateDate": "2026-08-28T23:57:45+0000",
+      "type": "CODE_SMELL",
+      "scope": "MAIN",
+      "quickFixAvailable": true,
+      "messageFormattings": []
+    },
+    {
+      "key": "AaBKzyEFVkzlIUEGkd-U",
+      "rule": "typescript:S125",
+      "severity": "MAJOR",
+      "component": "Netflix-Clone:Application-Code/src/hooks/useIntersectionObserver.ts",
+      "project": "Netflix-Clone",
+      "line": 2,
+      "hash": "8023674fd00c011c82af7d0dcab80328",
+      "textRange": {
+        "startLine": 2,
+        "endLine": 2,
+        "startOffset": 0,
+        "endOffset": 50
+      },
+      "flows": [],
+      "status": "OPEN",
+      "message": "Remove this commented out code.",
+      "effort": "5min",
+      "debt": "5min",
+      "author": "rpriest@gmail.com",
+      "tags": [
+        "unused"
+      ],
+      "creationDate": "2026-07-08T10:49:03+0000",
+      "updateDate": "2026-08-28T23:57:45+0000",
+      "type": "CODE_SMELL",
+      "scope": "MAIN",
+      "quickFixAvailable": true,
+      "messageFormattings": []
+    },
+    {
+      "key": "AaBKzyD9VkzlIUEGkd-T",
+      "rule": "typescript:S1874",
+      "severity": "MINOR",
+      "component": "Netflix-Clone:Application-Code/src/hooks/useOffSetTop.ts",
+      "project": "Netflix-Clone",
+      "line": 6,
+      "hash": "aef51145fe603da0f5e4ebf531ad9b1e",
+      "textRange": {
+        "startLine": 6,
+        "endLine": 6,
+        "startOffset": 15,
+        "endOffset": 26
+      },
+      "flows": [],
+      "status": "OPEN",
+      "message": "'pageYOffset' is deprecated. This is a legacy alias of `scrollY`.",
+      "effort": "15min",
+      "debt": "15min",
+      "author": "rpriest@gmail.com",
+      "tags": [
+        "cwe",
+        "obsolete"
+      ],
+      "creationDate": "2026-07-08T10:49:03+0000",
+      "updateDate": "2026-08-28T23:57:45+0000",
+      "type": "CODE_SMELL",
+      "scope": "MAIN",
+      "quickFixAvailable": false,
+      "messageFormattings": []
+    },
+    {
+      "key": "AaBKzyErVkzlIUEGkd-X",
+      "rule": "typescript:S125",
+      "severity": "MAJOR",
+      "component": "Netflix-Clone:Application-Code/src/layouts/MainLayout.tsx",
+      "project": "Netflix-Clone",
+      "line": 15,
+      "hash": "62b949baeb0405bb6afc08d7085fd746",
+      "textRange": {
+        "startLine": 15,
+        "endLine": 15,
+        "startOffset": 2,
+        "endOffset": 49
+      },
+      "flows": [],
+      "status": "OPEN",
+      "message": "Remove this commented out code.",
+      "effort": "5min",
+      "debt": "5min",
+      "author": "rpriest@gmail.com",
+      "tags": [
+        "unused"
+      ],
+      "creationDate": "2026-07-08T10:49:03+0000",
+      "updateDate": "2026-08-28T23:57:45+0000",
+      "type": "CODE_SMELL",
+      "scope": "MAIN",
+      "quickFixAvailable": true,
+      "messageFormattings": []
+    },
+    {
+      "key": "AaBKzyEdVkzlIUEGkd-V",
+      "rule": "typescript:S4323",
+      "severity": "MINOR",
+      "component": "Netflix-Clone:Application-Code/src/pages/GenreExplore.tsx",
+      "project": "Netflix-Clone",
+      "line": 17,
+      "hash": "59806dcc2b0dc7af9cf6d004a692c43f",
+      "textRange": {
+        "startLine": 17,
+        "endLine": 17,
+        "startOffset": 13,
+        "endOffset": 44
+      },
+      "flows": [
+        {
+          "locations": [
+            {
+              "component": "Netflix-Clone:Application-Code/src/pages/GenreExplore.tsx",
+              "textRange": {
+                "startLine": 31,
+                "endLine": 31,
+                "startOffset": 15,
+                "endOffset": 46
+              },
+              "msg": "Following occurrence.",
+              "msgFormattings": []
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "Netflix-Clone:Application-Code/src/pages/GenreExplore.tsx",
+              "textRange": {
+                "startLine": 32,
+                "endLine": 34,
+                "startOffset": 4,
+                "endOffset": 15
+              },
+              "msg": "Following occurrence.",
+              "msgFormattings": []
+            }
+          ]
+        }
+      ],
+      "status": "OPEN",
+      "message": "Replace this union type with a type alias.",
+      "effort": "5min",
+      "debt": "5min",
+      "author": "rpriest@gmail.com",
+      "tags": [
+        "proficiency"
+      ],
+      "creationDate": "2026-07-08T10:49:03+0000",
+      "updateDate": "2026-08-28T23:57:45+0000",
+      "type": "CODE_SMELL",
+      "scope": "MAIN",
+      "quickFixAvailable": false,
+      "messageFormattings": []
+    },
+    {
+      "key": "AaBKzyEkVkzlIUEGkd-W",
+      "rule": "typescript:S1128",
+      "severity": "MINOR",
+      "component": "Netflix-Clone:Application-Code/src/pages/WatchPage.tsx",
+      "project": "Netflix-Clone",
+      "line": 22,
+      "hash": "047655319117b33889f651bd61bfffec",
+      "textRange": {
+        "startLine": 22,
+        "endLine": 22,
+        "startOffset": 7,
+        "endOffset": 24
+      },
+      "flows": [],
+      "status": "OPEN",
+      "message": "Remove this unused import of 'MainLoadingScreen'.",
+      "effort": "2min",
+      "debt": "2min",
+      "author": "rpriest@gmail.com",
+      "tags": [
+        "es2015",
+        "unused"
+      ],
+      "creationDate": "2026-07-08T10:49:03+0000",
+      "updateDate": "2026-08-28T23:57:45+0000",
+      "type": "CODE_SMELL",
+      "scope": "MAIN",
+      "quickFixAvailable": true,
+      "messageFormattings": []
+    },
+    {
+      "key": "AaBKzyE7VkzlIUEGkd-Y",
+      "rule": "typescript:S4325",
+      "severity": "MINOR",
+      "component": "Netflix-Clone:Application-Code/src/providers/DetailModalProvider.tsx",
+      "project": "Netflix-Clone",
+      "line": 39,
+      "hash": "afa9c3ba164e012eb75b67e9caa819e1",
+      "textRange": {
+        "startLine": 39,
+        "endLine": 39,
+        "startOffset": 14,
+        "endOffset": 40
+      },
+      "flows": [],
+      "status": "OPEN",
+      "message": "This assertion is unnecessary since it does not change the type of the expression.",
+      "effort": "1min",
+      "debt": "1min",
+      "author": "rpriest@gmail.com",
+      "tags": [
+        "redundant"
+      ],
+      "creationDate": "2026-07-08T10:49:03+0000",
+      "updateDate": "2026-08-28T23:57:45+0000",
+      "type": "CODE_SMELL",
+      "scope": "MAIN",
+      "quickFixAvailable": true,
+      "messageFormattings": []
+    }
+  ],
+  "components": [
+    {
+      "key": "Netflix-Clone:Application-Code/src/hoc/withPagination.tsx",
+      "enabled": true,
+      "qualifier": "FIL",
+      "name": "withPagination.tsx",
+      "longName": "Application-Code/src/hoc/withPagination.tsx",
+      "path": "Application-Code/src/hoc/withPagination.tsx"
+    },
+    {
+      "key": "Netflix-Clone:Application-Code/src/providers/DetailModalProvider.tsx",
+      "enabled": true,
+      "qualifier": "FIL",
+      "name": "DetailModalProvider.tsx",
+      "longName": "Application-Code/src/providers/DetailModalProvider.tsx",
+      "path": "Application-Code/src/providers/DetailModalProvider.tsx"
+    },
+    {
+      "key": "Netflix-Clone:Application-Code/src/components/slick-slider/SlickSlider.tsx",
+      "enabled": true,
+      "qualifier": "FIL",
+      "name": "SlickSlider.tsx",
+      "longName": "Application-Code/src/components/slick-slider/SlickSlider.tsx",
+      "path": "Application-Code/src/components/slick-slider/SlickSlider.tsx"
+    },
+    {
+      "key": "Netflix-Clone:Application-Code/src/components/GenreBreadcrumbs.tsx",
+      "enabled": true,
+      "qualifier": "FIL",
+      "name": "GenreBreadcrumbs.tsx",
+      "longName": "Application-Code/src/components/GenreBreadcrumbs.tsx",
+      "path": "Application-Code/src/components/GenreBreadcrumbs.tsx"
+    },
+    {
+      "key": "Netflix-Clone:Application-Code/src/pages/WatchPage.tsx",
+      "enabled": true,
+      "qualifier": "FIL",
+      "name": "WatchPage.tsx",
+      "longName": "Application-Code/src/pages/WatchPage.tsx",
+      "path": "Application-Code/src/pages/WatchPage.tsx"
+    },
+    {
+      "key": "Netflix-Clone:Application-Code/src/pages/GenreExplore.tsx",
+      "enabled": true,
+      "qualifier": "FIL",
+      "name": "GenreExplore.tsx",
+      "longName": "Application-Code/src/pages/GenreExplore.tsx",
+      "path": "Application-Code/src/pages/GenreExplore.tsx"
+    },
+    {
+      "key": "Netflix-Clone:Application-Code/src/components/VideoPortalContainer.tsx",
+      "enabled": true,
+      "qualifier": "FIL",
+      "name": "VideoPortalContainer.tsx",
+      "longName": "Application-Code/src/components/VideoPortalContainer.tsx",
+      "path": "Application-Code/src/components/VideoPortalContainer.tsx"
+    },
+    {
+      "key": "Netflix-Clone:Application-Code/src/layouts/MainLayout.tsx",
+      "enabled": true,
+      "qualifier": "FIL",
+      "name": "MainLayout.tsx",
+      "longName": "Application-Code/src/layouts/MainLayout.tsx",
+      "path": "Application-Code/src/layouts/MainLayout.tsx"
+    },
+    {
+      "key": "Netflix-Clone:Application-Code/src/hooks/useIntersectionObserver.ts",
+      "enabled": true,
+      "qualifier": "FIL",
+      "name": "useIntersectionObserver.ts",
+      "longName": "Application-Code/src/hooks/useIntersectionObserver.ts",
+      "path": "Application-Code/src/hooks/useIntersectionObserver.ts"
+    },
+    {
+      "key": "Netflix-Clone:Application-Code/src/hooks/useOffSetTop.ts",
+      "enabled": true,
+      "qualifier": "FIL",
+      "name": "useOffSetTop.ts",
+      "longName": "Application-Code/src/hooks/useOffSetTop.ts",
+      "path": "Application-Code/src/hooks/useOffSetTop.ts"
+    },
+    {
+      "key": "Netflix-Clone:Application-Code/src/components/VideoItemWithHoverPure.tsx",
+      "enabled": true,
+      "qualifier": "FIL",
+      "name": "VideoItemWithHoverPure.tsx",
+      "longName": "Application-Code/src/components/VideoItemWithHoverPure.tsx",
+      "path": "Application-Code/src/components/VideoItemWithHoverPure.tsx"
+    },
+    {
+      "key": "Netflix-Clone:Application-Code/src/components/watch/VideoJSPlayer.tsx",
+      "enabled": true,
+      "qualifier": "FIL",
+      "name": "VideoJSPlayer.tsx",
+      "longName": "Application-Code/src/components/watch/VideoJSPlayer.tsx",
+      "path": "Application-Code/src/components/watch/VideoJSPlayer.tsx"
+    },
+    {
+      "key": "Netflix-Clone:Application-Code/src/components/GridWithInfiniteScroll.tsx",
+      "enabled": true,
+      "qualifier": "FIL",
+      "name": "GridWithInfiniteScroll.tsx",
+      "longName": "Application-Code/src/components/GridWithInfiniteScroll.tsx",
+      "path": "Application-Code/src/components/GridWithInfiniteScroll.tsx"
+    },
+    {
+      "key": "Netflix-Clone",
+      "enabled": true,
+      "qualifier": "TRK",
+      "name": "Netflix-Clone",
+      "longName": "Netflix-Clone"
+    }
+  ],
+  "facets": []
+}

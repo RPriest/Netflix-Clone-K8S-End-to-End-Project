@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.0",
+  "description": "Document to hold regional settings for Session Manager",
+  "sessionType": "Standard_Stream",
+  "inputs": {
+    "s3BucketName": "devsecops-vpc-flow-logs-<AWS_ACCOUNT_ID>",
+    "s3KeyPrefix": "ssm-sessions/",
+    "s3EncryptionEnabled": true,
+    "cloudWatchLogGroupName": "/aws/ssm/sessions",
+    "cloudWatchEncryptionEnabled": true,
+    "cloudWatchStreamingEnabled": true,
+    "idleSessionTimeout": "20",
+    "maxSessionDuration": "",
+    "kmsKeyId": "arn:aws:kms:us-east-1:<AWS_ACCOUNT_ID>:key/<SSM_SESSION_KMS_KEY_ID>",
+    "runAsEnabled": false,
+    "runAsDefaultUser": "",
+    "shellProfile": {"windows": "", "linux": ""}
+  }
+}

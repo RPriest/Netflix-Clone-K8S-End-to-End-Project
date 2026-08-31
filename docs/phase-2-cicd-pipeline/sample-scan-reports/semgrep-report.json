@@ -1,0 +1,277 @@
+{
+  "version": "1.172.0",
+  "results": [
+    {
+      "check_id": "dockerfile.security.missing-user-entrypoint.missing-user-entrypoint",
+      "path": "Application-Code/Dockerfile",
+      "start": {
+        "line": 41,
+        "col": 1,
+        "offset": 811
+      },
+      "end": {
+        "line": 41,
+        "col": 42,
+        "offset": 852
+      },
+      "extra": {
+        "message": "By not specifying a USER, a program in the container may run as 'root'. This is a security hazard. If an attacker can control a process running as root, they may have control over the container. Ensure that the last USER in a Dockerfile is a USER other than 'root'.",
+        "fix": "USER non-root\nENTRYPOINT [\"nginx\", \"-g\", \"daemon off;\"]",
+        "metadata": {
+          "cwe": [
+            "CWE-269: Improper Privilege Management"
+          ],
+          "category": "security",
+          "technology": [
+            "dockerfile"
+          ],
+          "confidence": "MEDIUM",
+          "owasp": [
+            "A04:2021 - Insecure Design",
+            "A06:2025 - Insecure Design"
+          ],
+          "references": [
+            "https://owasp.org/Top10/A04_2021-Insecure_Design"
+          ],
+          "subcategory": [
+            "audit"
+          ],
+          "likelihood": "LOW",
+          "impact": "MEDIUM",
+          "license": "Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license",
+          "vulnerability_class": [
+            "Improper Authorization"
+          ],
+          "source": "https://semgrep.dev/r/dockerfile.security.missing-user-entrypoint.missing-user-entrypoint",
+          "shortlink": "https://sg.run/k281"
+        },
+        "severity": "ERROR",
+        "fingerprint": "requires login",
+        "lines": "requires login",
+        "validation_state": "NO_VALIDATOR",
+        "engine_kind": "OSS"
+      }
+    },
+    {
+      "check_id": "python.lang.security.audit.insecure-transport.requests.request-with-http.request-with-http",
+      "path": "upload-to-defectdojo.py",
+      "start": {
+        "line": 22,
+        "col": 13,
+        "offset": 803
+      },
+      "end": {
+        "line": 22,
+        "col": 46,
+        "offset": 836
+      },
+      "extra": {
+        "message": "Detected a request using 'http://'. This request will be unencrypted, and attackers could listen into traffic on the network and be able to obtain sensitive information. Use 'https://' instead.",
+        "metadata": {
+          "owasp": [
+            "A03:2017 - Sensitive Data Exposure",
+            "A02:2021 - Cryptographic Failures",
+            "A04:2025 - Cryptographic Failures"
+          ],
+          "cwe": [
+            "CWE-319: Cleartext Transmission of Sensitive Information"
+          ],
+          "asvs": {
+            "control_id": "9.1.1 Weak TLS",
+            "control_url": "https://github.com/OWASP/ASVS/blob/master/4.0/en/0x17-V9-Communications.md#v92-server-communications-security-requirements",
+            "section": "V9 Communications Verification Requirements",
+            "version": "4"
+          },
+          "category": "security",
+          "technology": [
+            "requests"
+          ],
+          "references": [
+            "https://owasp.org/Top10/A02_2021-Cryptographic_Failures"
+          ],
+          "subcategory": [
+            "audit"
+          ],
+          "likelihood": "LOW",
+          "impact": "LOW",
+          "confidence": "MEDIUM",
+          "license": "Semgrep Rules License v1.0. For more details, visit semgrep.dev/legal/rules-license",
+          "vulnerability_class": [
+            "Mishandled Sensitive Information"
+          ],
+          "source": "https://semgrep.dev/r/python.lang.security.audit.insecure-transport.requests.request-with-http.request-with-http",
+          "shortlink": "https://sg.run/W8J4"
+        },
+        "severity": "INFO",
+        "fingerprint": "requires login",
+        "lines": "requires login",
+        "validation_state": "NO_VALIDATOR",
+        "engine_kind": "OSS"
+      }
+    }
+  ],
+  "errors": [],
+  "paths": {
+    "scanned": [
+      ".gitleaks.toml",
+      ".scannerwork/.sonar_lock",
+      ".scannerwork/report-task.txt",
+      "Application-Code/Dockerfile",
+      "Application-Code/README.md",
+      "Application-Code/index.html",
+      "Application-Code/njsscan-report.json",
+      "Application-Code/package.json",
+      "Application-Code/public/index.html",
+      "Application-Code/public/manifest.json",
+      "Application-Code/public/robots.txt",
+      "Application-Code/src/CustomClassNameSetup.ts",
+      "Application-Code/src/components/AgeLimitChip.tsx",
+      "Application-Code/src/components/DetailModal.tsx",
+      "Application-Code/src/components/GenreBreadcrumbs.tsx",
+      "Application-Code/src/components/GridPage.tsx",
+      "Application-Code/src/components/GridWithInfiniteScroll.tsx",
+      "Application-Code/src/components/HeroSection.tsx",
+      "Application-Code/src/components/Logo.tsx",
+      "Application-Code/src/components/MainLoadingScreen.tsx",
+      "Application-Code/src/components/MaturityRate.tsx",
+      "Application-Code/src/components/MaxLineTypography.tsx",
+      "Application-Code/src/components/MoreInfoButton.tsx",
+      "Application-Code/src/components/NetflixIconButton.tsx",
+      "Application-Code/src/components/NetflixNavigationLink.tsx",
+      "Application-Code/src/components/PlayButton.tsx",
+      "Application-Code/src/components/QualityChip.tsx",
+      "Application-Code/src/components/SearchBox.tsx",
+      "Application-Code/src/components/SimilarVideoCard.tsx",
+      "Application-Code/src/components/VideoCardPortal.tsx",
+      "Application-Code/src/components/VideoItemWithHover.tsx",
+      "Application-Code/src/components/VideoItemWithHoverPure.tsx",
+      "Application-Code/src/components/VideoPortalContainer.tsx",
+      "Application-Code/src/components/VideoSlider.tsx",
+      "Application-Code/src/components/animate/MotionContainer.tsx",
+      "Application-Code/src/components/animate/variants/Wrap.ts",
+      "Application-Code/src/components/animate/variants/fade/FadeIn.ts",
+      "Application-Code/src/components/animate/variants/fade/FadeOut.ts",
+      "Application-Code/src/components/animate/variants/zoom/ZoomIn.ts",
+      "Application-Code/src/components/layouts/Footer.tsx",
+      "Application-Code/src/components/layouts/MainHeader.tsx",
+      "Application-Code/src/components/layouts/index.ts",
+      "Application-Code/src/components/slick-slider/CustomNavigation.tsx",
+      "Application-Code/src/components/slick-slider/SlickSlider.tsx",
+      "Application-Code/src/components/watch/PlayerControlButton.tsx",
+      "Application-Code/src/components/watch/PlayerSeekbar.tsx",
+      "Application-Code/src/components/watch/VideoJSPlayer.tsx",
+      "Application-Code/src/components/watch/VolumeControllers.tsx",
+      "Application-Code/src/constant/index.ts",
+      "Application-Code/src/hoc/withPagination.tsx",
+      "Application-Code/src/hooks/redux.ts",
+      "Application-Code/src/hooks/useIntersectionObserver.ts",
+      "Application-Code/src/hooks/useOffSetTop.ts",
+      "Application-Code/src/hooks/useWindowSize.ts",
+      "Application-Code/src/layouts/MainLayout.tsx",
+      "Application-Code/src/lib/createSafeContext.ts",
+      "Application-Code/src/main.tsx",
+      "Application-Code/src/pages/GenreExplore.tsx",
+      "Application-Code/src/pages/HomePage.tsx",
+      "Application-Code/src/pages/WatchPage.tsx",
+      "Application-Code/src/providers/DetailModalProvider.tsx",
+      "Application-Code/src/providers/PortalProvider.tsx",
+      "Application-Code/src/routes/index.tsx",
+      "Application-Code/src/store/index.ts",
+      "Application-Code/src/store/slices/apiSlice.ts",
+      "Application-Code/src/store/slices/configuration.ts",
+      "Application-Code/src/store/slices/discover.ts",
+      "Application-Code/src/store/slices/genre.ts",
+      "Application-Code/src/theme/palette.ts",
+      "Application-Code/src/types/Common.ts",
+      "Application-Code/src/types/Genre.ts",
+      "Application-Code/src/types/Movie.ts",
+      "Application-Code/src/utils/common.ts",
+      "Application-Code/src/utils/index.ts",
+      "Application-Code/src/videojs-youtube.d.ts",
+      "Application-Code/src/vite-env.d.ts",
+      "Application-Code/tsconfig.json",
+      "Application-Code/tsconfig.node.json",
+      "Application-Code/vercel.json",
+      "Application-Code/vite.config.ts",
+      "Application-Code/yarn.lock",
+      "Jenkins/Jenkinsfile",
+      "README.md",
+      "gitleaks-report.json",
+      "sonar-report.json",
+      "upload-to-defectdojo.py"
+    ]
+  },
+  "time": {
+    "rules": [],
+    "rules_parse_time": 0.2947211265563965,
+    "profiling_times": {
+      "config_time": 0.825324535369873,
+      "core_time": 8.27334213256836,
+      "ignores_time": 0.0007448196411132812,
+      "total_time": 9.107738733291626
+    },
+    "parsing_time": {
+      "total_time": 0,
+      "per_file_time": {
+        "mean": 0,
+        "std_dev": 0
+      },
+      "very_slow_stats": {
+        "time_ratio": 0,
+        "count_ratio": 0
+      },
+      "very_slow_files": []
+    },
+    "scanning_time": {
+      "total_time": 0.4591386318206787,
+      "per_file_time": {
+        "mean": 0.0018365545272827153,
+        "std_dev": 0.00008159247103318292
+      },
+      "very_slow_stats": {
+        "time_ratio": 0,
+        "count_ratio": 0
+      },
+      "very_slow_files": []
+    },
+    "matching_time": {
+      "total_time": 0,
+      "per_file_and_rule_time": {
+        "mean": 0,
+        "std_dev": 0
+      },
+      "very_slow_stats": {
+        "time_ratio": 0,
+        "count_ratio": 0
+      },
+      "very_slow_rules_on_files": []
+    },
+    "tainting_time": {
+      "total_time": 0,
+      "per_def_and_rule_time": {
+        "mean": 0,
+        "std_dev": 0
+      },
+      "very_slow_stats": {
+        "time_ratio": 0,
+        "count_ratio": 0
+      },
+      "very_slow_rules_on_defs": []
+    },
+    "fixpoint_timeouts": [],
+    "prefiltering": {
+      "project_level_time": 0,
+      "file_level_time": 0,
+      "rules_with_project_prefilters_ratio": 0,
+      "rules_with_file_prefilters_ratio": 0.9952803473664338,
+      "rules_selected_ratio": 0.013592599584670568,
+      "rules_matched_ratio": 0.013592599584670568
+    },
+    "targets": [],
+    "total_bytes": 0,
+    "max_memory_bytes": 639993216
+  },
+  "engine_requested": "OSS",
+  "skipped_rules": [],
+  "profiling_results": []
+}

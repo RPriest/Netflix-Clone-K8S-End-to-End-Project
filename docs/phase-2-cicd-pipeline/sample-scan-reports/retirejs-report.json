@@ -1,0 +1,11 @@
+{
+  "version": "5.7.0",
+  "start": "2026-08-29T12:30:43.030Z",
+  "data": [],
+  "messages": [],
+  "errors": [],
+  "time": 29.562,
+  "vulnerabilityRepositories": [
+    "https://raw.githubusercontent.com/RetireJS/retire.js/master/repository/jsrepository-v5.json"
+  ]
+}

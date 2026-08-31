@@ -1,0 +1,6 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {"Effect": "Allow", "Action": "logs:DescribeLogGroups", "Resource": "arn:aws:logs:us-east-1:*:log-group:*"}
+  ]
+}

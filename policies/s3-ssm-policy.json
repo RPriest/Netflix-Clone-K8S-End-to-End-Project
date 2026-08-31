@@ -1,0 +1,13 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:GetEncryptionConfiguration", "s3:PutObject"],
+      "Resource": [
+        "arn:aws:s3:::devsecops-vpc-flow-logs-<AWS_ACCOUNT_ID>",
+        "arn:aws:s3:::devsecops-vpc-flow-logs-<AWS_ACCOUNT_ID>/*"
+      ]
+    }
+  ]
+}

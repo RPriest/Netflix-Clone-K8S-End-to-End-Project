@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: netflix-clone-service
+  namespace: default
+spec:
+  type: ClusterIP  # Internal only — ALB Ingress handles external traffic
+  selector:
+    app: netflix-clone
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80

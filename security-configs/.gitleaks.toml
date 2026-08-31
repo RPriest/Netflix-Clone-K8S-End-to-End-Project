@@ -1,0 +1,15 @@
+# .gitleaks.toml — place in root of netflix-clone repository
+[extend]
+  useDefault = true   # Use Gitleaks built-in rules as base
+
+[[rules]]
+  id = 'tmdb-api-key'
+  description = 'TMDB Movie Database API Key'
+  regex = '''(?i)tmdb[_-]?(?:api[_-]?)?(?:key|token|secret)["\s]*[=:]["\s]*[A-Za-z0-9]{25,}'''
+  tags = ['key', 'TMDB']
+
+[allowlist]
+  description = 'Known safe values'
+  regexes = [
+    '''YOUR_KEY_HERE''',
+    '''EXAMPLE_TOKEN''',

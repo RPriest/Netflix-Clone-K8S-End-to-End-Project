@@ -1,0 +1,63 @@
+{
+  "errors": [
+    {
+      "code": 2,
+      "level": "warn",
+      "message": "Timeout when running eval_nodejs on dist/assets/HomePage.7aad5f07.js:\n ",
+      "path": "dist/assets/HomePage.7aad5f07.js",
+      "rule_id": "eval_nodejs",
+      "type": "Timeout"
+    },
+    {
+      "code": 2,
+      "level": "warn",
+      "message": "Timeout when running join_resolve_path_traversal on dist/assets/HomePage.7aad5f07.js:\n ",
+      "path": "dist/assets/HomePage.7aad5f07.js",
+      "rule_id": "join_resolve_path_traversal",
+      "type": "Timeout"
+    },
+    {
+      "code": 2,
+      "level": "warn",
+      "message": "Timeout when running node_ssrf on dist/assets/HomePage.7aad5f07.js:\n ",
+      "path": "dist/assets/HomePage.7aad5f07.js",
+      "rule_id": "node_ssrf",
+      "type": "Timeout"
+    },
+    {
+      "code": 2,
+      "level": "warn",
+      "message": "Timeout when running node_ssrf on dist/assets/WatchPage.6c8cb839.js:\n ",
+      "path": "dist/assets/WatchPage.6c8cb839.js",
+      "rule_id": "node_ssrf",
+      "type": "Timeout"
+    },
+    {
+      "code": 2,
+      "level": "warn",
+      "message": "Timeout when running dom_xss on dist/assets/index.b17cd6e0.js:\n ",
+      "path": "dist/assets/index.b17cd6e0.js",
+      "rule_id": "dom_xss",
+      "type": "Timeout"
+    },
+    {
+      "code": 2,
+      "level": "warn",
+      "message": "Timeout when running helmet_header_x_powered_by on dist/assets/index.b17cd6e0.js:\n ",
+      "path": "dist/assets/index.b17cd6e0.js",
+      "rule_id": "helmet_header_x_powered_by",
+      "type": "Timeout"
+    },
+    {
+      "code": 2,
+      "level": "warn",
+      "message": "Timeout when running node_sqli_injection on dist/assets/index.b17cd6e0.js:\n ",
+      "path": "dist/assets/index.b17cd6e0.js",
+      "rule_id": "node_sqli_injection",
+      "type": "Timeout"
+    }
+  ],
+  "njsscan_version": "1.0.0",
+  "nodejs": {},
+  "templates": {}
+}

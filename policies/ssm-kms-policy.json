@@ -1,0 +1,6 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {"Effect": "Allow", "Action": ["kms:Decrypt", "kms:GenerateDataKey"], "Resource": "arn:aws:kms:us-east-1:<AWS_ACCOUNT_ID>:key/63bd279c-4f9e-4994-80a9-7418fa01a749"}
+  ]
+}
