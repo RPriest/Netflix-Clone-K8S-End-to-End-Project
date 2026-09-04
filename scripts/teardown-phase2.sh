@@ -8,13 +8,20 @@
 #   security groups, VPC peering, ArgoCD, Prometheus/Grafana (Helm),
 #   Secrets Manager secret, GuardDuty detector, CloudTrail trail + S3 bucket,
 #   the Monitoring-Role / DefectDojo-Role IAM roles and instance profiles
-#   from Module 2.4, every inline policy Phase 2 added to EC2-SSM-Role, and
-#   the two customer-managed KMS keys created in Modules 2.2 and 2.4.
+#   from Module 2.4, every inline policy Phase 2 added to EC2-SSM-Role, the
+#   two customer-managed KMS keys created in Modules 2.2 and 2.4, the Phase 1
+#   VPC Flow Log, and its destination S3 bucket.
 #
 # It does NOT touch Phase 1 resources that Phase 2 only *referenced*:
 #   EC2-SSM-Role / EC2-SSM-Profile itself (the role stays, just stripped of
-#   the policies this project added to it), devsecops-vpc-flow-logs-* bucket,
-#   and the SSM-SessionManagerRunShell document (Phase 2 only edited it).
+#   the policies this project added to it), and the SSM-SessionManagerRunShell
+#   document (Phase 2 only edited it).
+#
+# It DOES remove the VPC Flow Log, its destination S3 bucket
+# (devsecops-vpc-flow-logs-<account-id>), and the SSM session-recording KMS
+# key — full cleanup, nothing left billing. Phase 3 creates its own flow-log
+# bucket as a real Terraform resource rather than depending on this one, so
+# there's no cross-phase dependency left to worry about here.
 #
 # Usage:
 #   chmod +x teardown-phase2.sh
@@ -54,7 +61,7 @@ confirm "This will DELETE the Phase 2 infrastructure above. Continue?" || { echo
 #    ALB, which then blocks `eksctl delete cluster` and every stack that
 #    depends on its ENIs.
 # ----------------------------------------------------------------------------
-step "1/13 - Kubernetes: ArgoCD, Ingress, monitoring stack"
+step "1/15 - Kubernetes: ArgoCD, Ingress, monitoring stack"
 if kubectl cluster-info >/dev/null 2>&1; then
   echo "Deleting Ingress objects (releases any ALBs the controller created)..."
   kubectl delete ingress --all --all-namespaces --ignore-not-found=true --wait=true --timeout=120s
@@ -108,7 +115,7 @@ fi
 # ----------------------------------------------------------------------------
 # 2. IAM service account created via eksctl for the ALB controller
 # ----------------------------------------------------------------------------
-step "2/13 - IAM service account: aws-load-balancer-controller"
+step "2/15 - IAM service account: aws-load-balancer-controller"
 eksctl delete iamserviceaccount \
   --cluster="$CLUSTER_NAME" \
   --namespace=kube-system \
@@ -120,7 +127,7 @@ aws iam delete-policy --policy-arn "$POLICY_ARN" 2>/dev/null || echo "  (not fou
 # ----------------------------------------------------------------------------
 # 3. VPC peering (default VPC <-> EKS VPC) - must go before either VPC deletes
 # ----------------------------------------------------------------------------
-step "3/13 - VPC peering connection"
+step "3/15 - VPC peering connection"
 # NOTE: do NOT require a Name tag here - the peering connection this project
 # creates often has none, and filtering on it silently skips a real, billing
 # (well, free, but VPC-deletion-blocking) active connection.
@@ -159,7 +166,7 @@ fi
 #     but ONLY if nothing is still holding an ENI open in that VPC - hence
 #     stage 1's ALB wait-loop above.)
 # ----------------------------------------------------------------------------
-step "4/13 - EKS nodegroups + cluster ($CLUSTER_NAME)"
+step "4/15 - EKS nodegroups + cluster ($CLUSTER_NAME)"
 eksctl delete nodegroup --cluster "$CLUSTER_NAME" --name netflix-workers-spot --region "$REGION" 2>/dev/null || true
 if confirm "Delete the EKS cluster '$CLUSTER_NAME' now? (15-20 min, this is the big one)"; then
   CLUSTER_DELETE_OK=false
@@ -376,7 +383,7 @@ fi
 # ----------------------------------------------------------------------------
 # 5. EC2 instances (Jenkins, Monitoring, DefectDojo)
 # ----------------------------------------------------------------------------
-step "5/13 - EC2 instances"
+step "5/15 - EC2 instances"
 INSTANCE_IDS=$(aws ec2 describe-instances \
   --filters "Name=tag:Project,Values=DevSecOps" "Name=instance-state-name,Values=running,stopped" \
   --query "Reservations[].Instances[].InstanceId" --output text --region "$REGION")
@@ -397,7 +404,7 @@ fi
 #    cross-references first, THEN delete, with a couple of retries for any
 #    trailing ENI detachment.
 # ----------------------------------------------------------------------------
-step "6/13 - Security groups: Jenkins-SG, Monitoring-SG, DefectDojo-SG"
+step "6/15 - Security groups: Jenkins-SG, Monitoring-SG, DefectDojo-SG"
 declare -A SG_IDS
 for SG in Jenkins-SG Monitoring-SG DefectDojo-SG; do
   SG_IDS[$SG]=$(aws ec2 describe-security-groups --filters "Name=group-name,Values=$SG" \
@@ -440,13 +447,13 @@ done
 # ----------------------------------------------------------------------------
 # 7. ECR repository
 # ----------------------------------------------------------------------------
-step "7/13 - ECR repository ($ECR_REPO)"
+step "7/15 - ECR repository ($ECR_REPO)"
 aws ecr delete-repository --repository-name "$ECR_REPO" --force --region "$REGION" 2>/dev/null || \
   echo "  Not found or already deleted."
 # ----------------------------------------------------------------------------
 # 8. Secrets Manager
 # ----------------------------------------------------------------------------
-step "8/13 - Secrets Manager ($SECRET_NAME)"
+step "8/15 - Secrets Manager ($SECRET_NAME)"
 aws secretsmanager delete-secret --secret-id "$SECRET_NAME" \
   --force-delete-without-recovery --region "$REGION" 2>/dev/null || \
   echo "  Not found or already deleted."
@@ -455,7 +462,7 @@ aws secretsmanager delete-secret --secret-id "$SECRET_NAME" \
 # 9. CloudTrail trail - stop logging and give the last in-flight deliveries
 #    a moment to land before we try to empty the bucket in the next stage.
 # ----------------------------------------------------------------------------
-step "9/13 - CloudTrail trail ($TRAIL_NAME)"
+step "9/15 - CloudTrail trail ($TRAIL_NAME)"
 aws cloudtrail stop-logging --name "$TRAIL_NAME" --region "$REGION" 2>/dev/null || true
 aws cloudtrail delete-trail --name "$TRAIL_NAME" --region "$REGION" 2>/dev/null || \
   echo "  Not found or already deleted."
@@ -467,7 +474,7 @@ sleep 30
 #     can lose a race against CloudTrail's tail-end deliveries, so retry the
 #     empty-check in a loop before calling delete-bucket.
 # ----------------------------------------------------------------------------
-step "10/13 - S3 bucket ($CT_BUCKET)"
+step "10/15 - S3 bucket ($CT_BUCKET)"
 if aws s3api head-bucket --bucket "$CT_BUCKET" 2>/dev/null; then
   confirm "Empty + delete bucket $CT_BUCKET ? (irreversible - contains audit logs)" && {
     for attempt in 1 2 3 4 5; do
@@ -501,7 +508,7 @@ fi
 #     entitled to call the API at all" (SubscriptionRequiredException), which
 #     otherwise gets mislabeled as "no detector found."
 # ----------------------------------------------------------------------------
-step "11/13 - GuardDuty"
+step "11/15 - GuardDuty"
 GD_ERR=$(aws guardduty list-detectors --query 'DetectorIds[0]' --output text --region "$REGION" 2>&1 >/tmp/gd_out)
 DETECTOR_ID=$(cat /tmp/gd_out 2>/dev/null)
 if echo "$GD_ERR" | grep -q "SubscriptionRequiredException"; then
@@ -527,7 +534,7 @@ fi
 #     including their instance profiles, are Phase 2's own roles and get
 #     deleted outright rather than left behind.
 # ----------------------------------------------------------------------------
-step "12/13 - IAM: EC2-SSM-Role policies, Monitoring-Role, DefectDojo-Role"
+step "12/15 - IAM: EC2-SSM-Role policies, Monitoring-Role, DefectDojo-Role"
 echo "Removing the inline policies Phase 2 added to EC2-SSM-Role..."
 for POLICY in SSM-CloudWatchLogs-DescribeLogGroups SSM-KMS-SessionEncryption SSM-S3Logging-Access SecretsManagerAccess; do
   aws iam delete-role-policy --role-name EC2-SSM-Role --policy-name "$POLICY" 2>/dev/null && \
@@ -559,14 +566,38 @@ done
 #     Keys can't be deleted immediately; this schedules them for deletion
 #     after a waiting period so nothing is lost if you change your mind.
 # ----------------------------------------------------------------------------
-step "13/13 - KMS keys: netflix-devsecops-app-key, ssm-session-key"
-for ALIAS in alias/netflix-devsecops-app-key alias/ssm-session-key; do
+step "13/15 - KMS keys: netflix-devsecops-app-key, ssm-session-key"
+# The app-key was created via an alias (module 2.2 / Terraform), so the
+# alias lookup finds it directly. But Phase 1's SSM session key was created
+# with a bare `aws kms create-key` and no `create-alias` step ever followed,
+# so `alias/ssm-session-key` matches nothing even though the key still
+# exists. Fall back to matching on the key's Description instead of giving
+# up when the alias lookup comes back empty.
+find_kms_key_id() {
+  local ALIAS="$1" DESC_SUBSTR="$2"
+  local KEY_ID
   KEY_ID=$(aws kms describe-key --key-id "$ALIAS" --region "$REGION" --query 'KeyMetadata.KeyId' --output text 2>/dev/null)
+  if [[ -n "$KEY_ID" && "$KEY_ID" != "None" ]]; then
+    echo "$KEY_ID"
+    return
+  fi
+  for K in $(aws kms list-keys --region "$REGION" --query "Keys[].KeyId" --output text 2>/dev/null); do
+    D=$(aws kms describe-key --key-id "$K" --region "$REGION" --query 'KeyMetadata.Description' --output text 2>/dev/null)
+    if [[ "$D" == *"$DESC_SUBSTR"* ]]; then
+      echo "$K"
+      return
+    fi
+  done
+}
+delete_kms_key() {
+  local ALIAS="$1" DESC_SUBSTR="$2"
+  local KEY_ID
+  KEY_ID=$(find_kms_key_id "$ALIAS" "$DESC_SUBSTR")
   if [[ -n "$KEY_ID" && "$KEY_ID" != "None" ]]; then
     STATE=$(aws kms describe-key --key-id "$KEY_ID" --region "$REGION" --query 'KeyMetadata.KeyState' --output text 2>/dev/null)
     if [[ "$STATE" == "PendingDeletion" ]]; then
       echo "  $ALIAS ($KEY_ID) is already scheduled for deletion."
-      continue
+      return
     fi
     confirm "Schedule $ALIAS ($KEY_ID) for deletion in 7 days? (keeps a recovery window; nothing is billed for a key pending deletion)" && {
       aws kms delete-alias --alias-name "$ALIAS" --region "$REGION" 2>/dev/null || true
@@ -575,9 +606,76 @@ for ALIAS in alias/netflix-devsecops-app-key alias/ssm-session-key; do
         echo "  Couldn't schedule deletion - check the key's grants/state in the console."
     }
   else
-    echo "  $ALIAS not found, already deleted or scheduled."
+    echo "  $ALIAS not found by alias or by description match (\"$DESC_SUBSTR\") - already deleted, or check the console directly."
   fi
-done
+}
+delete_kms_key "alias/netflix-devsecops-app-key" "app"
+delete_kms_key "alias/ssm-session-key" "SSM session"
+# ----------------------------------------------------------------------------
+# 14. VPC Flow Log (Phase 1) - not referenced anywhere until now. Deleting
+#     the log here, before the bucket it writes to, avoids AWS silently
+#     recreating log-delivery activity against a bucket that's mid-deletion.
+# ----------------------------------------------------------------------------
+step "14/15 - VPC Flow Log"
+FLOW_LOG_IDS=$(aws ec2 describe-flow-logs --region "$REGION" \
+  --filter "Name=tag:Project,Values=DevSecOps" \
+  --query "FlowLogs[].FlowLogId" --output text 2>/dev/null)
+if [[ -z "$FLOW_LOG_IDS" ]]; then
+  # Fallback: not every flow log got the Project tag - match by the default
+  # VPC directly, since that's the only place Phase 1 created one.
+  DEFAULT_VPC_ID=$(aws ec2 describe-vpcs --region "$REGION" \
+    --filters Name=isDefault,Values=true --query "Vpcs[0].VpcId" --output text 2>/dev/null)
+  if [[ -n "$DEFAULT_VPC_ID" && "$DEFAULT_VPC_ID" != "None" ]]; then
+    FLOW_LOG_IDS=$(aws ec2 describe-flow-logs --region "$REGION" \
+      --filter "Name=resource-id,Values=$DEFAULT_VPC_ID" \
+      --query "FlowLogs[].FlowLogId" --output text 2>/dev/null)
+  fi
+fi
+if [[ -n "$FLOW_LOG_IDS" && "$FLOW_LOG_IDS" != "None" ]]; then
+  echo "  Found flow log(s): $FLOW_LOG_IDS"
+  confirm "Delete these VPC Flow Log(s)?" && {
+    aws ec2 delete-flow-logs --region "$REGION" --flow-log-ids $FLOW_LOG_IDS >/dev/null && \
+      echo "  Deleted." || echo "  Couldn't delete - check manually with 'aws ec2 describe-flow-logs'."
+  }
+else
+  echo "  No flow logs found (already deleted, or none were ever created)."
+fi
+# ----------------------------------------------------------------------------
+# 15. VPC Flow Logs S3 bucket - Phase 3's vpc module creates its own bucket
+#     as a real Terraform resource rather than depending on this one still
+#     existing, so there's no cross-phase dependency left to protect here.
+# ----------------------------------------------------------------------------
+step "15/15 - S3 bucket: devsecops-vpc-flow-logs-${ACCOUNT_ID}"
+FLOW_BUCKET="devsecops-vpc-flow-logs-${ACCOUNT_ID}"
+if aws s3api head-bucket --bucket "$FLOW_BUCKET" 2>/dev/null; then
+  confirm "Empty and delete S3 bucket $FLOW_BUCKET?" && {
+    echo "  Emptying $FLOW_BUCKET (including all object versions, since versioning may be enabled)..."
+    aws s3 rm "s3://${FLOW_BUCKET}" --recursive >/dev/null 2>&1 || true
+    for attempt in 1 2 3 4 5; do
+      VERSIONS_JSON=$(aws s3api list-object-versions --bucket "$FLOW_BUCKET" \
+        --query '{Objects: Versions[].{Key:Key,VersionId:VersionId}}' --output json 2>/dev/null)
+      if [[ -n "$VERSIONS_JSON" && "$VERSIONS_JSON" != '{"Objects": null}' ]]; then
+        echo "$VERSIONS_JSON" | jq -e '.Objects | length > 0' >/dev/null 2>&1 && \
+          aws s3api delete-objects --bucket "$FLOW_BUCKET" --delete "$VERSIONS_JSON" >/dev/null 2>&1 || true
+      fi
+      MARKERS_JSON=$(aws s3api list-object-versions --bucket "$FLOW_BUCKET" \
+        --query '{Objects: DeleteMarkers[].{Key:Key,VersionId:VersionId}}' --output json 2>/dev/null)
+      if [[ -n "$MARKERS_JSON" && "$MARKERS_JSON" != '{"Objects": null}' ]]; then
+        echo "$MARKERS_JSON" | jq -e '.Objects | length > 0' >/dev/null 2>&1 && \
+          aws s3api delete-objects --bucket "$FLOW_BUCKET" --delete "$MARKERS_JSON" >/dev/null 2>&1 || true
+      fi
+      REMAINING=$(aws s3api list-objects-v2 --bucket "$FLOW_BUCKET" --query 'length(Contents[])' --output text 2>/dev/null)
+      [[ "$REMAINING" == "0" || "$REMAINING" == "None" ]] && break
+      echo "  $REMAINING object(s) still present - retrying in 15s (attempt $attempt/5)..."
+      sleep 15
+    done
+    aws s3api delete-bucket --bucket "$FLOW_BUCKET" --region "$REGION" && \
+      echo "  Deleted $FLOW_BUCKET." || \
+      echo "  Bucket still not empty after retries - run 'aws s3 ls s3://${FLOW_BUCKET}' and delete the stragglers manually, then delete the bucket."
+  }
+else
+  echo "  Bucket not found."
+fi
 # ----------------------------------------------------------------------------
 # Local cleanup
 # ----------------------------------------------------------------------------
@@ -596,12 +694,6 @@ echo "aws ec2 describe-nat-gateways --region $REGION --filter Name=state,Values=
 echo "aws ec2 describe-vpcs --region $REGION --filters Name=isDefault,Values=false"
 echo "aws iam list-roles --query \"Roles[?RoleName=='Monitoring-Role' || RoleName=='DefectDojo-Role']\""
 echo "aws kms list-aliases --query \"Aliases[?AliasName=='alias/netflix-devsecops-app-key' || AliasName=='alias/ssm-session-key']\""
+echo "aws ec2 describe-flow-logs --region $REGION"
+echo "aws s3 ls | grep devsecops-vpc-flow-logs"
 echo "----------------------------------------------------------------------"
-# ============================================================================
-# PHASE 1 - NOT TOUCHED BY THIS SCRIPT (shared/foundational, delete manually
-# only if you're sure nothing else depends on them):
-#   - IAM role/instance profile: EC2-SSM-Role / EC2-SSM-Profile (kept, but
-#     stripped of the four inline policies Phase 2 added - see stage 12)
-#   - S3 bucket: devsecops-vpc-flow-logs-<account-id>  (VPC Flow Logs)
-#   - SSM document: SSM-SessionManagerRunShell (this doc only edited it)
-# ============================================================================
