@@ -8,7 +8,7 @@
         "kms:GenerateDataKey",
         "kms:DescribeKey"
       ],
-      "Resource": "arn:aws:kms:us-east-1:651532008087:key/<KEY_ID>"
+      "Resource": "arn:aws:kms:us-east-1:<ACCOUNT_ID>:key/<KEY_ID>"
     }
   ]
 }
